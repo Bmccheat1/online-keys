@@ -1,0 +1,31 @@
+{
+  "name": "keys-selling-website",
+  "version": "1.0.0",
+  "description": "Digital Keys Selling Website - Buy game/software keys with duration-based pricing",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && node server.js",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "vercel-build": "cd client && npm install && npm run build"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongoose": "^8.5.2",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^7.3.1",
+    "express-validator": "^7.1.0",
+    "morgan": "^1.10.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

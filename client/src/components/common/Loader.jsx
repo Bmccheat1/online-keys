@@ -1,0 +1,9 @@
+export default function Loader({ size = 'md', text = 'Loading...' }) {
+  const sizes = { sm: 'h-6 w-6', md: 'h-10 w-10', lg: 'h-16 w-16' };
+  return (
+    <div className="flex flex-col items-center justify-center py-12">
+      <div className={`${sizes[size]} animate-spin rounded-full border-4 border-dark-600 border-t-primary-500`} />
+      {text && <p className="mt-4 text-dark-400 text-sm">{text}</p>}
+    </div>
+  );
+}
