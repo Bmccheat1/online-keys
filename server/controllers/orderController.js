@@ -96,8 +96,15 @@ const initiateOrder = async (req, res, next) => {
       throw new Error('Payment gateway is not configured. Please contact admin.');
     }
 
-    // 5. 🔥 Create payment order on QuickGateway (server-to-server)
-    const gatewayOrder = await createPaymentOrder(duration.price, gatewayConfig.merchantToken);
+    // 5. 🔥 Check Flash Sale — use flash price if active
+    const isFlashActive = duration.flashSale?.isActive && 
+      duration.flashSale?.flashPrice != null && 
+      duration.flashSale?.endAt && 
+      new Date(duration.flashSale.endAt) > new Date();
+    const payableAmount = isFlashActive ? duration.flashSale.flashPrice : duration.price;
+
+    // 6. 🔥 Create payment order on QuickGateway (with correct price)
+    const gatewayOrder = await createPaymentOrder(payableAmount, gatewayConfig.merchantToken);
 
     if (!gatewayOrder.success) {
       // Release key if gateway order creation fails
@@ -108,7 +115,7 @@ const initiateOrder = async (req, res, next) => {
       throw new Error('Payment gateway order creation failed: ' + (gatewayOrder.message || 'Unknown error'));
     }
 
-    // 6. Return full payment details to frontend
+    // 7. Return full payment details to frontend
     res.json({
       success: true,
       data: {
@@ -116,7 +123,9 @@ const initiateOrder = async (req, res, next) => {
         productId: product._id,
         productTitle: product.title,
         duration: duration.label,
-        amount: duration.price,
+        amount: payableAmount,
+        originalPrice: duration.price,
+        isFlashSale: isFlashActive,
         durationValue: duration.value,
         durationUnit: duration.unit,
         customerEmail: customerEmail || req.user?.email || '',
@@ -129,6 +138,7 @@ const initiateOrder = async (req, res, next) => {
         },
         // Reservation timeout info
         expiresInMinutes: RESERVATION_TIMEOUT_MS / 60000,
+        _flashApplied: isFlashActive,
       },
     });
   } catch (error) {
@@ -263,6 +273,13 @@ const completeOrder = async (req, res, next) => {
       (d) => d.value === durationValue && d.unit === durationUnit
     );
 
+    // Check flash sale
+    const isFlashActive = duration.flashSale?.isActive && 
+      duration.flashSale?.flashPrice != null && 
+      duration.flashSale?.endAt && 
+      new Date(duration.flashSale.endAt) > new Date();
+    const paidAmount = isFlashActive ? duration.flashSale.flashPrice : duration.price;
+
     const order = await Order.create({
       userId: req.user?._id || null,
       customerEmail: customerEmail || req.user?.email || '',
@@ -273,10 +290,11 @@ const completeOrder = async (req, res, next) => {
           label: duration.label,
           value: duration.value,
           unit: duration.unit,
-          price: duration.price,
+          price: paidAmount,
+          originalPrice: duration.price,
         },
       }],
-      totalAmount: duration.price,
+      totalAmount: paidAmount,
       paymentId: paymentId,
       paymentStatus: 'completed',
       orderStatus: 'completed',
@@ -300,7 +318,7 @@ const completeOrder = async (req, res, next) => {
         key: key.keyValue,
         product: product.title,
         duration: duration.label,
-        amount: duration.price,
+        amount: paidAmount,
         paymentId: paymentId,
         transactionId: verification.data?.transactionId || paymentId,
         purchasedAt: order.createdAt || new Date().toISOString(),

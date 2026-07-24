@@ -83,22 +83,41 @@ async function createPaymentOrder(amount, merchantToken) {
       {
         amount: amount,
         userToken: merchantToken,
+        // SDk also sends these - pass them for compatibility
+        amount_in_paisa: Math.round(amount * 100),
+        currency: 'INR',
       }
     );
 
-    if (response.status === 200 && response.data.status === 'success') {
+    // QuickGateway returns data in various formats:
+    // { status: 'ORDER_CREATED', paymentId: '...', result: { ... } }
+    // { result: { paymentId: '...', ... } }
+    // { paymentId: '...', ... }
+    const data = response.data || {};
+    const result = data.result || data;
+    const status = (result.status || '').toLowerCase();
+    const paymentId = result.paymentId || data.paymentId || '';
+
+    // Accept any 2xx response with a paymentId as success
+    const isHttpOk = response.status >= 200 && response.status < 300;
+    const isSuccessStatus = ['success', 'order_created', 'created', 'paid', 'completed'].includes(status);
+    const hasPaymentId = !!paymentId;
+
+    if (isHttpOk && (isSuccessStatus || hasPaymentId)) {
       return {
         success: true,
-        paymentId: response.data.paymentId,
-        qrData: response.data.qrData || response.data.qr,
-        paymentUrl: response.data.paymentUrl,
-        amount: response.data.amount || amount,
+        paymentId: paymentId,
+        qrData: result.qrData || result.qr || data.qrData || data.qr || '',
+        paymentUrl: result.paymentUrl || data.paymentUrl || '',
+        amount: result.amount || data.amount || amount,
       };
     }
 
+    // Better error message
+    const errMsg = result.message || data.message || result.msg || data.msg || '';
     return {
       success: false,
-      message: response.data?.message || 'Failed to create payment order',
+      message: errMsg || `Gateway responded with status: ${result.status || response.status}`,
     };
   } catch (error) {
     console.error('❌ QuickGateway createOrder error:', error.message);
