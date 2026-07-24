@@ -1,5 +1,5 @@
 const { Order, Key, Product, Setting } = require('../models');
-const { verifyPayment, getGatewayConfig } = require('../utils/quickGateway');
+const { createPaymentOrder, verifyPayment, getGatewayConfig } = require('../utils/quickGateway');
 
 // ─── Configuration ──────────────────────────────────────────
 const RESERVATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -96,7 +96,19 @@ const initiateOrder = async (req, res, next) => {
       throw new Error('Payment gateway is not configured. Please contact admin.');
     }
 
-    // 5. Return info for frontend to call QuickGateway SDK
+    // 5. 🔥 Create payment order on QuickGateway (server-to-server)
+    const gatewayOrder = await createPaymentOrder(duration.price, gatewayConfig.merchantToken);
+
+    if (!gatewayOrder.success) {
+      // Release key if gateway order creation fails
+      await Key.findByIdAndUpdate(reservedKey._id, {
+        $set: { status: 'available', reservedAt: null, reservationExpiresAt: null },
+      });
+      res.status(502);
+      throw new Error('Payment gateway order creation failed: ' + (gatewayOrder.message || 'Unknown error'));
+    }
+
+    // 6. Return full payment details to frontend
     res.json({
       success: true,
       data: {
@@ -108,9 +120,12 @@ const initiateOrder = async (req, res, next) => {
         durationValue: duration.value,
         durationUnit: duration.unit,
         customerEmail: customerEmail || req.user?.email || '',
-        // Gateway info for QuickGateway SDK
+        // ✅ QuickGateway order details (server-created, secure)
         gateway: {
-          merchantToken: gatewayConfig.merchantToken,
+          paymentId: gatewayOrder.paymentId,
+          paymentUrl: gatewayOrder.paymentUrl,
+          qrData: gatewayOrder.qrData,
+          merchantToken: gatewayConfig.merchantToken, // still pass for SDK if needed
         },
         // Reservation timeout info
         expiresInMinutes: RESERVATION_TIMEOUT_MS / 60000,
@@ -276,16 +291,18 @@ const completeOrder = async (req, res, next) => {
       $inc: { soldKeys: 1 },
     });
 
-    // 8. 🎉 Return key to customer
+    // 8. 🎉 Return key & full transaction details to customer
     res.status(201).json({
       success: true,
       data: {
         orderId: order._id,
+        orderNumber: order.orderNumber,
         key: key.keyValue,
         product: product.title,
         duration: duration.label,
         amount: duration.price,
         paymentId: paymentId,
+        transactionId: verification.data?.transactionId || paymentId,
         purchasedAt: order.createdAt || new Date().toISOString(),
       },
     });
