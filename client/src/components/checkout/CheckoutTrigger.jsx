@@ -97,7 +97,7 @@ export default function CheckoutTrigger({
         <button
           onClick={handlePay}
           disabled={loading || disabled}
-          className={`w-full py-2.5 sm:py-3 px-5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${buttonClassName || 'bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/40'}`}
+          className={`w-full py-2 sm:py-2.5 px-4 sm:px-5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${buttonClassName || 'bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/40'}`}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">

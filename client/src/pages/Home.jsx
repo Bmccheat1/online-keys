@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { productAPI, orderAPI, couponAPI } from '../api';
+import { quickGatewayAPI } from '../utils/quickgateway';
 import CheckoutTrigger from '../components/checkout/CheckoutTrigger';
 import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, Clock, Percent, Sparkles } from 'lucide-react';
 
@@ -8,8 +9,13 @@ function Bg() {
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-[#050508] via-[#080812] to-[#0a0608]" />
-      <div className="absolute -top-40 -left-40 w-[400px] h-[400px] rounded-full blur-[120px] opacity-20" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.2) 0%, transparent 70%)', animation: 'float-gold 8s ease-in-out infinite' }} />
-      <div className="absolute -bottom-40 -right-40 w-[350px] h-[350px] rounded-full blur-[120px] opacity-15" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 70%)', animation: 'float-gold-2 10s ease-in-out infinite' }} />
+      {/* Animated orbs */}
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full blur-[140px] opacity-25" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, transparent 70%)', animation: 'drift-slow 12s ease-in-out infinite' }} />
+      <div className="absolute -bottom-40 -right-40 w-[450px] h-[450px] rounded-full blur-[140px] opacity-20" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.2) 0%, transparent 70%)', animation: 'drift-slower 16s ease-in-out infinite' }} />
+      <div className="absolute top-1/3 -left-20 w-[300px] h-[300px] rounded-full blur-[120px] opacity-15" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%)', animation: 'drift-slow 10s ease-in-out infinite reverse' }} />
+      <div className="absolute bottom-1/4 right-0 w-[280px] h-[280px] rounded-full blur-[100px] opacity-10" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)', animation: 'drift-slower 14s ease-in-out infinite alternate' }} />
+      {/* Subtle grid overlay */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
     </div>
   );
 }
@@ -41,60 +47,107 @@ function Countdown({ endAt }) {
   );
 }
 
+/* ─── Helper: format order ID as unique ─── */
+function formatOrderId(id) {
+  if (!id) return '—';
+  const clean = String(id).replace(/[^a-f0-9]/gi, '').slice(-12).toUpperCase();
+  return clean.length >= 8 ? `LIC-${clean.slice(0,4)}-${clean.slice(4,8)}-${clean.slice(8,12)}` : `#${id.slice(-10)}`;
+}
+
 /* ─── Success View ─── */
 function SuccessView({ purchasedKey, mod, onReset }) {
   const [copiedKey, setCopiedKey] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
+  const [copiedOrder, setCopiedOrder] = useState(false);
+  const [paymentMeta, setPaymentMeta] = useState(null);
   const copyKey = () => { navigator.clipboard?.writeText(purchasedKey.key); setCopiedKey(true); setTimeout(() => setCopiedKey(false), 2000); };
-  const copyOrder = () => { navigator.clipboard?.writeText(purchasedKey.orderId); setCopiedId(true); setTimeout(() => setCopiedId(false), 2000); };
-  const date = purchasedKey.purchasedAt ? new Date(purchasedKey.purchasedAt).toLocaleString() : '';
+  const copyOrderText = () => { navigator.clipboard?.writeText(purchasedKey.orderId || purchasedKey.orderNumber); setCopiedOrder(true); setTimeout(() => setCopiedOrder(false), 2000); };
+  const date = purchasedKey.purchasedAt ? new Date(purchasedKey.purchasedAt).toLocaleString('en-IN') : '';
+
+  // Fetch payment details (UTR, method, etc.)
+  useEffect(() => {
+    if (!purchasedKey?.paymentId) return;
+    quickGatewayAPI.getPaymentDetails(purchasedKey.paymentId)
+      .then(res => {
+        const meta = res.data?.result || res.data;
+        if (meta && meta.utr) setPaymentMeta(meta);
+      })
+      .catch(() => {}); // silent fail — UTR is bonus
+  }, [purchasedKey?.paymentId]);
+
+  const orderLabel = purchasedKey.orderNumber
+    ? `ORD-${String(purchasedKey.orderNumber).slice(-8).toUpperCase()}`
+    : formatOrderId(purchasedKey.orderId);
+  const utr = paymentMeta?.utr && paymentMeta.utr !== '0' ? paymentMeta.utr : null;
+  const payMethod = paymentMeta?.method || null;
+
   return (
     <div className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto px-3 sm:px-4 py-4 sm:py-6">
       <div className="bg-[#0d0d1a]/90 backdrop-blur-xl border border-[#1e1e2e]/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 shadow-2xl shadow-black/50">
         <div className="mx-auto w-12 sm:w-14 h-12 sm:h-14 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-xl shadow-emerald-500/30">
           <Zap className="w-6 sm:w-7 h-6 sm:h-7 text-white" />
         </div>
-        <h2 className="text-base sm:text-lg md:text-xl font-bold text-white text-center mb-1">Payment Successful! 🎉</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold text-white text-center mb-1">Payment Successful!</h2>
         <p className="text-xs sm:text-sm text-gray-400 text-center mb-4 sm:mb-5">{purchasedKey.product || mod?.title} — {purchasedKey.duration}</p>
 
+        {/* License Key */}
         <div className="bg-[#050508]/80 border border-[#1e1e2e] rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4">
           <p className="text-[10px] sm:text-[11px] text-gray-500 mb-1 sm:mb-1.5">Your License Key</p>
           <p className="text-xs sm:text-sm md:text-base font-mono font-bold text-amber-400 break-all select-all">{purchasedKey.key}</p>
           <button onClick={copyKey} className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-gray-600 hover:text-amber-400 transition-colors">
-            {copiedKey ? '✓ Copied!' : '📋 Click to copy'}
+            {copiedKey ? '✓ Copied!' : 'Click to copy'}
           </button>
         </div>
 
+        {/* Transaction Details */}
         <div className="bg-[#050508]/60 border border-[#1e1e2e] rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 space-y-2 sm:space-y-2.5 text-left">
           <p className="text-[10px] sm:text-[11px] text-gray-500 uppercase tracking-wider font-medium">Transaction Details</p>
+
           <div className="flex justify-between items-center gap-2">
-            <span className="text-[11px] sm:text-xs text-gray-500">Order ID</span>
+            <span className="text-[11px] sm:text-xs text-gray-500">Order</span>
             <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-              <span className="text-[11px] sm:text-xs font-mono text-gray-300 truncate">#{purchasedKey.orderId?.slice(-10) || '—'}</span>
-              <button onClick={copyOrder} className="text-gray-600 hover:text-amber-400 transition-colors shrink-0" title="Copy Order ID">
-                {copiedId ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              <span className="text-[11px] sm:text-xs font-mono font-bold text-amber-400/90 truncate">{orderLabel}</span>
+              <button onClick={copyOrderText} className="text-gray-600 hover:text-amber-400 transition-colors shrink-0" title="Copy Order ID">
+                {copiedOrder ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
               </button>
             </div>
           </div>
+
           <div className="flex justify-between items-center gap-2">
             <span className="text-[11px] sm:text-xs text-gray-500">Transaction ID</span>
-            <span className="text-[11px] sm:text-xs font-mono text-gray-300 truncate">{purchasedKey.paymentId ? purchasedKey.paymentId.slice(-16) : '—'}</span>
+            <span className="text-[11px] sm:text-xs font-mono text-gray-300 truncate">{purchasedKey.transactionId ? purchasedKey.transactionId.slice(-16) : (purchasedKey.paymentId?.slice(-16) || '—')}</span>
           </div>
+
+          {utr && (
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-[11px] sm:text-xs text-gray-500">UTR / Ref</span>
+              <span className="text-[11px] sm:text-xs font-mono text-gray-300 truncate">{utr}</span>
+            </div>
+          )}
+
+          {payMethod && (
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] sm:text-xs text-gray-500">Payment Method</span>
+              <span className="text-[11px] sm:text-xs font-medium text-gray-300">{payMethod}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-[11px] sm:text-xs text-gray-500">Amount Paid</span>
-            <span className="text-[11px] sm:text-xs font-bold text-emerald-400">₹{purchasedKey.amount?.toLocaleString()}</span>
+            <span className="text-[11px] sm:text-xs font-bold text-emerald-400">₹{Number(purchasedKey.amount || 0).toLocaleString()}</span>
           </div>
+
           <div className="flex justify-between items-center gap-2">
             <span className="text-[11px] sm:text-xs text-gray-500">Date & Time</span>
             <span className="text-[11px] sm:text-xs text-gray-400 text-right">{date}</span>
           </div>
+
           <div className="flex justify-between items-center">
             <span className="text-[11px] sm:text-xs text-gray-500">Status</span>
-            <span className="text-[10px] sm:text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Completed</span>
+            <span className="text-[10px] sm:text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-700/30">Completed</span>
           </div>
         </div>
 
-        <button onClick={onReset} className="w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 transition-all duration-200">
+        <button onClick={onReset} className="w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/40 transition-all duration-200 active:scale-[0.97]">
           Buy Another Key
         </button>
       </div>
@@ -334,7 +387,7 @@ export default function Home() {
                   onComplete={handleComplete}
                   releaseReservation={handleRelease}
                   disabled={!selectedMod || !selectedDuration}
-                  buttonLabel={<><Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> Pay ₹{discountedPrice.toLocaleString()} <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></>}
+                  buttonLabel={<><Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Pay ₹{discountedPrice.toLocaleString()} <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></>}
                 />
               </div>
             )}

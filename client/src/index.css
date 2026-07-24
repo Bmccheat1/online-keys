@@ -49,6 +49,15 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(15px); }
 }
+@keyframes drift-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+@keyframes drift-slower {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-30px, 25px) scale(1.08); }
+}
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -61,6 +70,8 @@
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 .animate-float-gold { animation: float-gold 8s ease-in-out infinite; }
 .animate-float-gold-2 { animation: float-gold-2 10s ease-in-out infinite; }
+.animate-drift-slow { animation: drift-slow 12s ease-in-out infinite; }
+.animate-drift-slower { animation: drift-slower 16s ease-in-out infinite; }
 .animate-slide-up { animation: slide-up 0.4s ease-out; }
 .animate-fade-in { animation: fade-in 0.3s ease-out; }
 
