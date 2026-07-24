@@ -93,7 +93,7 @@ const initiateOrder = async (req, res, next) => {
         $set: { status: 'available', reservedAt: null, reservationExpiresAt: null },
       });
       res.status(400);
-      throw new Error('Payment gateway is not configured. Please contact admin.');
+      throw new Error('Payment gateway is not configured. Admin must set Merchant Token in Settings page.');
     }
 
     // 5. 🔥 Check Flash Sale — use flash price if active

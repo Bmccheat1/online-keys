@@ -6,7 +6,8 @@ import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, 
 function loadQG() {
   return new Promise((resolve, reject) => {
     if (window.QuickGateway) return resolve(window.QuickGateway);
-    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in/api' };
+    // API calls go through backend proxy → same origin → no CORS issues
+    window.QuickGatewayConfig = { apiBase: '/api/quickgateway-proxy' };
     const s = document.createElement('script');
     s.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     s.async = true;
@@ -196,13 +197,12 @@ export default function Home() {
       reservationId = r.data.reservationId;
 
       // Step 2: Load QuickGateway SDK
-      let QG;
-      QG = await loadQG();
+      const QG = await loadQG();
 
-      // Step 3: SDK embedded checkout (bottom sheet with QR)
-      QG.checkout({
-        amount: r.data.amount,
-        userToken: r.data.gateway.merchantToken,
+      // Step 3: Show existing payment sheet (backend already created the order)
+      // Using showCheckout instead of checkout to avoid dual order creation
+      QG.showCheckout({
+        paymentId: r.data.paymentId,
         onSuccess: async (pd) => {
           try {
             paymentProcessed = true;
@@ -229,10 +229,7 @@ export default function Home() {
       });
     } catch (e) {
       if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
-      // Agar SDK fail ho to error dikhao aur batayo ki admin se token check kare
-      toast.error(e.message?.includes('SDK') 
-        ? 'Payment gateway SDK failed to load. Check your internet or try a different browser.'
-        : (e.response?.data?.message || 'Failed to start payment'));
+      toast.error(e.response?.data?.message || 'Failed to start payment. Check that the merchant token is configured in admin settings.');
       setBuying(false);
     }
   }, [selectedMod, selectedDuration]);

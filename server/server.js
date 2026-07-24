@@ -17,6 +17,7 @@ const settingRoutes = require('./routes/settingRoutes');
 const configRoutes = require('./routes/configRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const couponRoutes = require('./routes/couponRoutes');
+const quickgatewayProxyRoutes = require('./routes/quickgatewayProxy');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/settings', settingRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/quickgateway-proxy', quickgatewayProxyRoutes);
 
 // ─── Error Handling ─────────────────────────────────────
 app.use(notFound);

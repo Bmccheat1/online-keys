@@ -12,8 +12,8 @@ function loadQuickGatewaySDK() {
       resolve(window.QuickGateway);
       return;
     }
-    // SDK ko bataye API calls QuickGateway server par jaye
-    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in/api' };
+    // API calls go through backend proxy → same origin → no CORS issues
+    window.QuickGatewayConfig = { apiBase: '/api/quickgateway-proxy' };
     const script = document.createElement('script');
     script.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     script.async = true;
@@ -66,15 +66,13 @@ export default function ProductDetail() {
       });
       reservationId = initiateRes.data.reservationId;
 
-      const { amount, gateway } = initiateRes.data;
-
-      // Step 2: Load QuickGateway SDK & open bottom sheet checkout
+      // Step 2: Load QuickGateway SDK & show existing payment sheet
       setPaymentStep('payment');
       const QG = await loadQuickGatewaySDK();
 
-      QG.checkout({
-        amount: amount,
-        userToken: gateway.merchantToken,
+      // Use showCheckout with the paymentId from backend (avoids dual order creation)
+      QG.showCheckout({
+        paymentId: initiateRes.data.paymentId,
         onSuccess: async function (paymentData) {
           // Step 3: Payment success → verify & complete order on backend
           paymentProcessed = true;
