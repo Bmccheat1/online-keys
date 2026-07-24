@@ -6,6 +6,8 @@ import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, 
 function loadQG() {
   return new Promise((resolve, reject) => {
     if (window.QuickGateway) return resolve(window.QuickGateway);
+    // SDK ko bataye ki API calls QuickGateway server par jaye (relative /api nahi)
+    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in' };
     const s = document.createElement('script');
     s.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     s.async = true;
@@ -183,77 +185,61 @@ export default function Home() {
     setBuying(true);
 
     let reservationId = null;
+    let paymentProcessed = false;
 
     try {
-      // Step 1: Initiate order — backend reserves key + creates order on QuickGateway
+      // Step 1: Initiate — backend reserves key + returns gateway config
       const r = await orderAPI.initiate({
         productId: selectedMod._id,
         durationValue: selectedDuration.value,
         durationUnit: selectedDuration.unit,
       });
       reservationId = r.data.reservationId;
-      const paymentId = r.data.gateway.paymentId;
-
-      if (!paymentId) {
-        throw new Error('No payment ID returned from gateway');
-      }
 
       // Step 2: Load QuickGateway SDK
       let QG;
       try { QG = await loadQG(); } catch (e) {
-        // If SDK fails to load, fallback: open payment URL directly
-        if (r.data.gateway.paymentUrl) {
-          window.open(r.data.gateway.paymentUrl, '_blank');
-          toast.success('Payment page opened in new tab. Complete payment and come back.');
-          // Poll for completion manually
-          const poll = setInterval(async () => {
-            try {
-              const cr = await orderAPI.complete({
-                productId: selectedMod._id,
-                durationValue: selectedDuration.value,
-                durationUnit: selectedDuration.unit,
-                paymentId: paymentId,
-              });
-              clearInterval(poll);
-              setPurchasedKey(cr.data);
-              toast.success('🎉 Key delivered!');
-            } catch {
-              // keep polling until complete or timeout
-            }
-          }, 5000);
-          // Stop polling after 5 minutes
-          setTimeout(() => clearInterval(poll), 300000);
-          setBuying(false);
-          return;
-        }
         toast.error('Payment gateway unavailable. Check your internet connection.');
+        if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
         setBuying(false); return;
       }
 
-      // Step 3: Show existing payment in SDK bottom sheet (no duplicate order creation)
-      QG.showCheckout({
-        paymentId: paymentId,
+      // Step 3: SDK embedded checkout
+      //    QG.checkout() calls QuickGateway: create-order → show bottom sheet → poll → onSuccess/onFailure
+      //    It returns immediately (the sheet is async). We keep buying=true until sheet closes.
+      QG.checkout({
+        amount: r.data.amount,
+        userToken: r.data.gateway.merchantToken,
         onSuccess: async (pd) => {
           try {
+            paymentProcessed = true;
             const cr = await orderAPI.complete({
               productId: selectedMod._id,
               durationValue: selectedDuration.value,
               durationUnit: selectedDuration.unit,
-              paymentId: pd.paymentId || pd.id || paymentId,
+              paymentId: pd.paymentId || pd.id,
             });
             setPurchasedKey(cr.data);
             toast.success('🎉 Key delivered!');
-          } catch (e) { toast.error(e.response?.data?.message || 'Delivery failed'); }
+            setBuying(false);
+          } catch (e) {
+            toast.error(e.response?.data?.message || 'Key delivery failed');
+            setBuying(false);
+          }
         },
         onFailure: async (e) => {
-          if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
+          if (reservationId && !paymentProcessed) {
+            try { await orderAPI.release({ reservationId }); } catch {}
+          }
           toast.error(e?.message || 'Payment cancelled');
+          setBuying(false);
         },
       });
     } catch (e) {
       if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
       toast.error(e.response?.data?.message || 'Failed to start payment');
-    } finally { setBuying(false); }
+      setBuying(false);
+    }
   }, [selectedMod, selectedDuration]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center p-4"><div className="animate-pulse space-y-3 w-full max-w-xs sm:max-w-sm"><div className="h-12 sm:h-14 bg-[#1a1a28] rounded-xl"/><div className="h-12 sm:h-14 bg-[#1a1a28] rounded-xl"/><div className="h-14 sm:h-16 bg-[#1a1a28] rounded-xl"/></div></div>;
@@ -361,20 +347,6 @@ export default function Home() {
                     <span className="text-gray-500">{selectedDuration.label}</span>
                     <span className="text-gray-300">₹{(hasFlashSale && isFlashActive ? selectedDuration.flashSale.flashPrice : selectedDuration.price).toLocaleString()}</span>
                   </div>
-                  {hasFlashSale && isFlashActive && (
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 text-[11px] sm:text-xs bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-transparent rounded-lg p-1.5 sm:p-2 -mx-1.5 animate-fade-in">
-                      <span className="flex items-center gap-1 sm:gap-1.5 text-amber-400 font-medium">
-                        <Sparkles className="w-3 sm:w-3.5 h-3 sm:h-3.5 animate-pulse-glow" />
-                        <span className="animate-pulse-glow inline-block rounded px-1">Flash Sale</span>
-                      </span>
-                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                        {selectedDuration.flashSale?.endAt && <Countdown endAt={selectedDuration.flashSale.endAt} />}
-                        <span className="text-gray-600 line-through">₹{selectedDuration.price.toLocaleString()}</span>
-                        <span className="text-amber-400 font-bold">₹{selectedDuration.flashSale.flashPrice.toLocaleString()}</span>
-                        <span className="text-[10px] text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-full font-semibold">-{Math.round((1 - selectedDuration.flashSale.flashPrice / selectedDuration.price) * 100)}%</span>
-                      </div>
-                    </div>
-                  )}
                   {appliedCoupon && (
                     <div className="flex items-center justify-between text-[11px] sm:text-xs pt-1.5 border-t border-[#1e1e2e]/40">
                       <span className="flex items-center gap-1 text-emerald-400"><Percent className="w-3 h-3" /> {appliedCoupon.code}</span>

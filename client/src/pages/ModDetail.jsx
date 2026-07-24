@@ -14,8 +14,10 @@ function loadQuickGatewaySDK() {
       resolve(window.QuickGateway);
       return;
     }
+    // SDK ko bataye API calls QuickGateway server par jaye
+    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in' };
     const script = document.createElement('script');
-    script.src = 'https://pay.quickgateway.in/sdk/quickgateway.js';
+    script.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     script.async = true;
     script.onload = () => {
       if (window.QuickGateway) resolve(window.QuickGateway);
@@ -54,6 +56,9 @@ export default function ModDetail() {
     setBuying(true);
     setPaymentStep('initiating');
 
+    let reservationId = null;
+    let paymentProcessed = false;
+
     try {
       // Step 1: Initiate order — guest (no auth needed)
       const initiateRes = await orderAPI.initiate({
@@ -61,6 +66,7 @@ export default function ModDetail() {
         durationValue: selectedDuration.value,
         durationUnit: selectedDuration.unit,
       });
+      reservationId = initiateRes.data.reservationId;
 
       const { amount, gateway } = initiateRes.data;
 
@@ -73,6 +79,7 @@ export default function ModDetail() {
         userToken: gateway.merchantToken,
         onSuccess: async function (paymentData) {
           // Step 3: Payment success → verify & deliver key
+          paymentProcessed = true;
           setPaymentStep('verifying');
           try {
             const completeRes = await orderAPI.complete({
@@ -84,20 +91,28 @@ export default function ModDetail() {
             setPurchasedKey(completeRes.data);
             setPaymentStep('done');
             toast.success('Payment successful! Your key is ready.');
+            setBuying(false);
           } catch (err) {
             toast.error(err.response?.data?.message || 'Payment verified but key delivery failed. Contact support.');
             setPaymentStep('idle');
+            setBuying(false);
           }
         },
         onFailure: function (error) {
+          if (reservationId && !paymentProcessed) {
+            orderAPI.release({ reservationId }).catch(() => {});
+          }
           toast.error(error?.message || 'Payment was cancelled or failed. Please try again.');
           setPaymentStep('idle');
+          setBuying(false);
         },
       });
     } catch (error) {
+      if (reservationId) {
+        try { await orderAPI.release({ reservationId }); } catch {}
+      }
       toast.error(error.response?.data?.message || 'Failed to initiate payment. Please try again.');
       setPaymentStep('idle');
-    } finally {
       setBuying(false);
     }
   }, [mod, selectedDuration]);

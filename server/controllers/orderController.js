@@ -103,19 +103,8 @@ const initiateOrder = async (req, res, next) => {
       new Date(duration.flashSale.endAt) > new Date();
     const payableAmount = isFlashActive ? duration.flashSale.flashPrice : duration.price;
 
-    // 6. 🔥 Create payment order on QuickGateway (with correct price)
-    const gatewayOrder = await createPaymentOrder(payableAmount, gatewayConfig.merchantToken);
-
-    if (!gatewayOrder.success) {
-      // Release key if gateway order creation fails
-      await Key.findByIdAndUpdate(reservedKey._id, {
-        $set: { status: 'available', reservedAt: null, reservationExpiresAt: null },
-      });
-      res.status(502);
-      throw new Error('Payment gateway order creation failed: ' + (gatewayOrder.message || 'Unknown error'));
-    }
-
-    // 7. Return full payment details to frontend
+    // 6. Return details to frontend — SDK will create order on QuickGateway
+    //    The SDK's checkout() function handles: create-order → show bottom sheet → poll → onSuccess
     res.json({
       success: true,
       data: {
@@ -129,16 +118,12 @@ const initiateOrder = async (req, res, next) => {
         durationValue: duration.value,
         durationUnit: duration.unit,
         customerEmail: customerEmail || req.user?.email || '',
-        // ✅ QuickGateway order details (server-created, secure)
+        // Gateway info for QuickGateway SDK to create order
         gateway: {
-          paymentId: gatewayOrder.paymentId,
-          paymentUrl: gatewayOrder.paymentUrl,
-          qrData: gatewayOrder.qrData,
-          merchantToken: gatewayConfig.merchantToken, // still pass for SDK if needed
+          merchantToken: gatewayConfig.merchantToken,
         },
         // Reservation timeout info
         expiresInMinutes: RESERVATION_TIMEOUT_MS / 60000,
-        _flashApplied: isFlashActive,
       },
     });
   } catch (error) {
