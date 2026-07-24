@@ -2,7 +2,7 @@
  * QUICKGATEWAY PAYMENT INTEGRATION — Server-Side Reference
  * =========================================================
  * 
- * Base URL: https://quickgateway.in/api   (or https://api.quickgateway.in/api)
+ * Base URL: https://api.quickgateway.in/api
  * 
  * ─── ENDPOINTS ─────────────────────────────────────────────────
  * 
@@ -54,7 +54,7 @@
  *    "FAILED"   → Generic failure
  * 
  * ─── SDK (Client-Side) ──────────────────────────────────────
- *    URL:   https://pay.quickgateway.in/sdk/quickgateway.js
+ *    URL:   https://quickgateway.in/sdk/quickgateway.js
  *    Config: window.QuickGatewayConfig = { apiBase: 'https://yourdomain.com/api' }
  *    Methods:
  *      QuickGateway.checkout({ amount, userToken, onSuccess, onFailure })
@@ -72,9 +72,7 @@ const https = require('https');
 const env = require('../config/env');
 
 // QuickGateway API base — always use /api suffix
-// Both these URLs work (they resolve to the same Vercel deployment):
-//   https://quickgateway.in/api          (used by PHP SDK)
-//   https://api.quickgateway.in/api      (used by our proxy)
+//   https://api.quickgateway.in/api
 const QUICKGATEWAY_BASE = (process.env.QUICKGATEWAY_API_URL || 'https://api.quickgateway.in').replace(/\/+$/, '') + '/api';
 
 /**
@@ -120,7 +118,7 @@ function httpsRequest(url, options = {}, body = null) {
 // =========================================================================
 // 1. CREATE PAYMENT ORDER
 // =========================================================================
-// POST https://quickgateway.in/api/create-order
+// POST https://api.quickgateway.in/api/create-order
 //
 // Response (success):
 //   {
@@ -208,7 +206,7 @@ async function createPaymentOrder(amount, merchantToken, customerMobile = '99999
 // =========================================================================
 // 2. GET PAYMENT DETAILS
 // =========================================================================
-// GET https://quickgateway.in/api/payment/details/:paymentId
+// GET https://api.quickgateway.in/api/payment/details/:paymentId
 // Authorization: Bearer <merchant_token>
 //
 // Response:
@@ -292,7 +290,7 @@ async function getPaymentDetails(paymentId, merchantToken) {
 // =========================================================================
 // 3. VERIFY PAYMENT
 // =========================================================================
-// POST https://quickgateway.in/api/payment/verify
+// POST https://api.quickgateway.in/api/payment/verify
 // Request:  { trxId: "..." }
 // Response: PLAIN TEXT — one of:
 //   "SUCCESS"   → Payment confirmed

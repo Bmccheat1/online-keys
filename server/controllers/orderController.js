@@ -118,6 +118,11 @@ const initiateOrder = async (req, res, next) => {
       throw new Error('Payment gateway order failed: ' + (gwOrder.message || 'Unknown error'));
     }
 
+    // 6b. Save paymentId on key (needed for webhook lookup later)
+    await Key.findByIdAndUpdate(reservedKey._id, {
+      $set: { paymentId: gwOrder.paymentId },
+    });
+
     // 7. Try to get full payment details (for embedded QR + polling without SDK)
     let paymentDetails = null;
     try {

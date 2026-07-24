@@ -4,27 +4,27 @@
  * 
  * Forwards payment API calls from the frontend to QuickGateway.
  * This avoids CORS issues — browsers can call same-origin /api/quickgateway-proxy/*
- * and this server forwards to https://quickgateway.in/api/*
+ * and this server forwards to https://api.quickgateway.in/api/*
  *
  * ─── ENDPOINTS ────────────────────────────────────────────────
  * 
  * POST /api/quickgateway-proxy/create-order
- *   → POST https://quickgateway.in/api/create-order
+ *   → POST https://api.quickgateway.in/api/create-order
  *   Body: { user_token, customer_mobile, amount, [redirect_url], [order_id], [remark_1], [remark_2] }
  *   Response: { status: "SUCCESS"|"FAILED", success: boolean, message: string, result?: {...} }
  * 
  * GET /api/quickgateway-proxy/payment/details/:paymentId
- *   → GET https://quickgateway.in/api/payment/details/:paymentId
+ *   → GET https://api.quickgateway.in/api/payment/details/:paymentId
  *   Headers: Authorization: Bearer <merchantToken>
  *   Response: { status: "SUCCESS"|"FAILED", result?: {...} }
  * 
  * POST /api/quickgateway-proxy/payment/verify
- *   → POST https://quickgateway.in/api/payment/verify
+ *   → POST https://api.quickgateway.in/api/payment/verify
  *   Body: { trxId: "..." }
  *   Response: PLAIN TEXT "SUCCESS"|"FAILURE"|"PENDING"|"ALREADY"|"NOT_FOUND"
  * 
  * POST /api/quickgateway-proxy/payment/set-amount/:paymentId
- *   → POST https://quickgateway.in/api/payment/set-amount/:paymentId
+ *   → POST https://api.quickgateway.in/api/payment/set-amount/:paymentId
  *   Body: { amount: number }
  *   Response: { status: "SUCCESS"|"FAILED", message: string, result?: { amount } }
  */

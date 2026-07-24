@@ -43,6 +43,11 @@ const keySchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  paymentId: {
+    type: String,
+    default: null,
+    index: true,
+  },
 }, {
   timestamps: true,
 });

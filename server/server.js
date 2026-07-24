@@ -18,6 +18,7 @@ const configRoutes = require('./routes/configRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const quickgatewayProxyRoutes = require('./routes/quickgatewayProxy');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
 
@@ -36,6 +37,9 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Webhooks — MUST be before rate limiter (gateway retries are normal)
+app.use('/api/webhooks', webhookRoutes);
 
 // Rate limiting - prevent abuse
 const limiter = rateLimit({

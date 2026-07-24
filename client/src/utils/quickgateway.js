@@ -5,7 +5,7 @@
  * All calls go through the backend proxy (/api/quickgateway-proxy/)
  * to avoid CORS issues when calling the gateway directly from browser.
  * 
- * The proxy forwards to: https://quickgateway.in/api/
+ * The proxy forwards to: https://api.quickgateway.in/api/
  * 
  * ─── USAGE ────────────────────────────────────────────────────
  *   import { quickGatewayAPI } from '../utils/quickgateway';
