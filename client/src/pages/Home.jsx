@@ -6,13 +6,12 @@ import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, 
 function loadQG() {
   return new Promise((resolve, reject) => {
     if (window.QuickGateway) return resolve(window.QuickGateway);
-    // SDK ko bataye ki API calls QuickGateway server par jaye (relative /api nahi)
     window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in/api' };
     const s = document.createElement('script');
     s.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     s.async = true;
-    s.onload = () => window.QuickGateway ? resolve(window.QuickGateway) : reject();
-    s.onerror = () => reject();
+    s.onload = () => window.QuickGateway ? resolve(window.QuickGateway) : reject(new Error('SDK loaded but QuickGateway not found'));
+    s.onerror = () => reject(new Error('SDK script network error'));
     document.head.appendChild(s);
   });
 }
@@ -188,7 +187,7 @@ export default function Home() {
     let paymentProcessed = false;
 
     try {
-      // Step 1: Initiate — backend reserves key + returns gateway config
+      // Step 1: Initiate — backend reserves key + creates QuickGateway order
       const r = await orderAPI.initiate({
         productId: selectedMod._id,
         durationValue: selectedDuration.value,
@@ -198,15 +197,9 @@ export default function Home() {
 
       // Step 2: Load QuickGateway SDK
       let QG;
-      try { QG = await loadQG(); } catch (e) {
-        toast.error('Payment gateway unavailable. Check your internet connection.');
-        if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
-        setBuying(false); return;
-      }
+      QG = await loadQG();
 
-      // Step 3: SDK embedded checkout
-      //    QG.checkout() calls QuickGateway: create-order → show bottom sheet → poll → onSuccess/onFailure
-      //    It returns immediately (the sheet is async). We keep buying=true until sheet closes.
+      // Step 3: SDK embedded checkout (bottom sheet with QR)
       QG.checkout({
         amount: r.data.amount,
         userToken: r.data.gateway.merchantToken,
@@ -221,11 +214,10 @@ export default function Home() {
             });
             setPurchasedKey(cr.data);
             toast.success('🎉 Key delivered!');
-            setBuying(false);
           } catch (e) {
             toast.error(e.response?.data?.message || 'Key delivery failed');
-            setBuying(false);
           }
+          setBuying(false);
         },
         onFailure: async (e) => {
           if (reservationId && !paymentProcessed) {
@@ -237,7 +229,10 @@ export default function Home() {
       });
     } catch (e) {
       if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
-      toast.error(e.response?.data?.message || 'Failed to start payment');
+      // Agar SDK fail ho to error dikhao aur batayo ki admin se token check kare
+      toast.error(e.message?.includes('SDK') 
+        ? 'Payment gateway SDK failed to load. Check your internet or try a different browser.'
+        : (e.response?.data?.message || 'Failed to start payment'));
       setBuying(false);
     }
   }, [selectedMod, selectedDuration]);

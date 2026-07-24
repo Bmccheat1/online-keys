@@ -1,5 +1,5 @@
 const { Order, Key, Product, Setting } = require('../models');
-const { createPaymentOrder, verifyPayment, getGatewayConfig } = require('../utils/quickGateway');
+const { createPaymentOrder, verifyPayment, getPaymentDetails, getGatewayConfig } = require('../utils/quickGateway');
 
 // ─── Configuration ──────────────────────────────────────────
 const RESERVATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
@@ -103,8 +103,29 @@ const initiateOrder = async (req, res, next) => {
       new Date(duration.flashSale.endAt) > new Date();
     const payableAmount = isFlashActive ? duration.flashSale.flashPrice : duration.price;
 
-    // 6. Return details to frontend — SDK will create order on QuickGateway
-    //    The SDK's checkout() function handles: create-order → show bottom sheet → poll → onSuccess
+    // 6. ✅ Create QuickGateway order server-side
+    const gwOrder = await createPaymentOrder(
+      payableAmount,
+      gatewayConfig.merchantToken,
+      '9999999999'
+    );
+
+    if (!gwOrder.success) {
+      await Key.findByIdAndUpdate(reservedKey._id, {
+        $set: { status: 'available', reservedAt: null, reservationExpiresAt: null },
+      });
+      res.status(502);
+      throw new Error('Payment gateway order failed: ' + (gwOrder.message || 'Unknown error'));
+    }
+
+    // 7. Try to get full payment details (for embedded QR + polling without SDK)
+    let paymentDetails = null;
+    try {
+      const det = await getPaymentDetails(gwOrder.paymentId, gatewayConfig.merchantToken);
+      if (det.success && det.data) paymentDetails = det.data;
+    } catch (e) { /* non-critical */ }
+
+    // 8. Return everything frontend needs
     res.json({
       success: true,
       data: {
@@ -118,11 +139,14 @@ const initiateOrder = async (req, res, next) => {
         durationValue: duration.value,
         durationUnit: duration.unit,
         customerEmail: customerEmail || req.user?.email || '',
-        // Gateway info for QuickGateway SDK to create order
+        // QuickGateway order details
+        paymentId: gwOrder.paymentId,
+        paymentUrl: gwOrder.paymentUrl,
+        trxId: paymentDetails?.transactionId || paymentDetails?.trxId || '',
+        upiId: paymentDetails?.upiId || '',
         gateway: {
           merchantToken: gatewayConfig.merchantToken,
         },
-        // Reservation timeout info
         expiresInMinutes: RESERVATION_TIMEOUT_MS / 60000,
       },
     });
@@ -384,4 +408,26 @@ const releaseReservation = async (req, res, next) => {
   }
 };
 
-module.exports = { initiateOrder, completeOrder, releaseReservation, getMyOrders, getAllOrders };
+// ─── Payment Status Check (for frontend polling without SDK) ───
+// @desc    Check payment status via QuickGateway
+// @route   GET /api/orders/payment-status/:paymentId
+const checkPaymentStatus = async (req, res, next) => {
+  try {
+    const { paymentId } = req.params;
+    if (!paymentId) {
+      res.status(400);
+      throw new Error('Payment ID required');
+    }
+    const settings = await Setting.findOne({ key: 'payment_gateway' }).lean();
+    const gatewayConfig = getGatewayConfig(settings?.value);
+    if (!gatewayConfig.merchantToken) {
+      return res.json({ success: false, status: 'error', message: 'Gateway not configured' });
+    }
+    const result = await getPaymentDetails(paymentId, gatewayConfig.merchantToken);
+    res.json({ success: result.success, status: result.data?.status || 'unknown', data: result.data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { initiateOrder, completeOrder, releaseReservation, getMyOrders, getAllOrders, checkPaymentStatus };
