@@ -125,7 +125,6 @@ export default function ProductDetail() {
                   releaseReservation={handleRelease}
                   disabled={!selectedDuration}
                   buttonLabel={`Buy Now — ₹${selectedDuration?.price?.toLocaleString() || ''}`}
-                  buttonClassName="btn-primary w-full text-center py-3 text-lg"
                 />
               )}
               <p className="text-center text-xs text-dark-500 mt-2">

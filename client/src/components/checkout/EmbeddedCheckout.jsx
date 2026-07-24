@@ -1,9 +1,10 @@
 /**
- * EmbeddedCheckout — Bottom Sheet Payment UI
- * ==========================================
+ * EmbeddedCheckout — Bottom Sheet Payment UI (Portal-based)
+ * ========================================================
  * 
  * Adapted from QuickGateway's EmbeddedCheckout.tsx.
- * Uses the backend proxy for API calls (no direct gateway calls).
+ * Uses createPortal to render at document.body level,
+ * avoiding CSS stacking context issues with backdrop-filter parents.
  * 
  * Usage:
  *   <EmbeddedCheckout
@@ -16,6 +17,7 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { quickGatewayAPI } from '../../utils/quickgateway';
 import { Spinner } from './Loading';
 import toast from 'react-hot-toast';
@@ -63,7 +65,7 @@ export default function EmbeddedCheckout({
       setAnimateIn(false);
       if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
       const timer = setTimeout(() => setRenderSheet(false), 300);
-      return () => clearTimeout(timer);
+      return () => clearInterval(timer);
     }
   }, [isOpen]);
 
@@ -228,14 +230,16 @@ export default function EmbeddedCheckout({
 
   if (!renderSheet) return null;
 
-  return (
+  // Portal to body — avoids CSS stacking context issues (backdrop-filter on parents)
+  return createPortal(
     <>
       <StyleInjector />
 
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 transition-all duration-300 ease-out"
+        className="fixed inset-0 transition-all duration-300 ease-out"
         style={{
+          zIndex: 2147483646,
           backgroundColor: animateIn ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0)',
           backdropFilter: animateIn ? 'blur(4px)' : 'blur(0px)',
         }}
@@ -243,47 +247,50 @@ export default function EmbeddedCheckout({
       />
 
       {/* Bottom Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-center pointer-events-none">
+      <div
+        className="fixed bottom-0 left-0 right-0 flex items-end justify-center pointer-events-none"
+        style={{ zIndex: 2147483647 }}
+      >
         <div
           ref={sheetRef}
-          className="relative w-full max-w-lg bg-[#0a0a14] border border-[#1e1e2e]/80 rounded-t-3xl shadow-2xl pointer-events-auto overflow-hidden transition-all duration-400"
+          className="relative w-full max-w-md mx-2 bg-[#0a0a14] border border-[#1e1e2e]/80 rounded-t-2xl shadow-2xl pointer-events-auto overflow-hidden transition-all duration-300"
           style={{
-            maxHeight: '92vh',
+            maxHeight: '85vh',
             transform: animateIn ? 'translateY(0)' : 'translateY(100%)',
             opacity: animateIn ? 1 : 0,
             transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         >
           {/* Handle Bar */}
-          <div className="flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 rounded-full bg-[#1e1e2e]" />
+          <div className="flex justify-center pt-2 pb-0.5">
+            <div className="w-8 h-1 rounded-full bg-[#2a2a3e]" />
           </div>
 
           {/* Close Button */}
           <button
             onClick={onClose}
-            className={`absolute top-3 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a28] hover:bg-[#2a2a3e] text-gray-500 hover:text-white transition-colors z-10 ${successAnimPhase === 'redirect' ? 'hidden' : ''}`}
+            className={`absolute top-2 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-[#1a1a28] hover:bg-[#2a2a3e] text-gray-500 hover:text-white transition-colors z-10 ${successAnimPhase === 'redirect' ? 'hidden' : ''}`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
 
           {/* ─── Scrollable Content ─── */}
-          <div className="overflow-y-auto px-5 pb-8 pt-2" style={{ maxHeight: 'calc(92vh - 40px)' }}>
+          <div className="overflow-y-auto px-4 pb-6 pt-1" style={{ maxHeight: 'calc(85vh - 36px)' }}>
 
             {/* ========== LOADING ========== */}
             {status === 'loading' && (
-              <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
                 <Spinner size="md" />
-                <p className="text-sm text-gray-500 font-medium">Loading payment details...</p>
+                <p className="text-xs text-gray-500 font-medium">Loading payment details...</p>
               </div>
             )}
 
             {/* ========== SUCCESS ========== */}
             {status === 'success' && (
-              <div className="flex flex-col items-center text-center py-6 min-h-[300px]">
-                <div className="relative mb-6">
+              <div className="flex flex-col items-center text-center py-4 min-h-[260px]">
+                <div className="relative mb-4">
                   <div className="absolute inset-0 rounded-full animate-success-glow"
                     style={{
                       background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%)',
@@ -292,7 +299,7 @@ export default function EmbeddedCheckout({
                       transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
                     }}
                   />
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center relative"
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center relative"
                     style={{
                       background: successAnimPhase === 'circle' ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.15)',
                       border: '2px solid rgba(16,185,129,0.4)',
@@ -301,7 +308,7 @@ export default function EmbeddedCheckout({
                       transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
                       boxShadow: successAnimPhase !== 'circle' ? '0 0 40px rgba(16,185,129,0.25)' : 'none',
                     }}>
-                    <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                    <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                       style={{
                         strokeDasharray: 30,
                         strokeDashoffset: (successAnimPhase === 'circle' || successAnimPhase === 'check') ? 30 : 0,
@@ -311,7 +318,7 @@ export default function EmbeddedCheckout({
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-1"
+                <h3 className="text-lg font-bold text-white mb-0.5"
                   style={{
                     opacity: successAnimPhase === 'circle' ? 0 : 1,
                     transform: successAnimPhase === 'circle' ? 'translateY(10px)' : 'translateY(0)',
@@ -319,7 +326,7 @@ export default function EmbeddedCheckout({
                   }}>
                   Payment Successful!
                 </h3>
-                <p className="text-sm text-gray-500 mb-5"
+                <p className="text-xs text-gray-500 mb-4"
                   style={{
                     opacity: successAnimPhase === 'circle' ? 0 : 1,
                     transform: successAnimPhase === 'circle' ? 'translateY(10px)' : 'translateY(0)',
@@ -327,31 +334,31 @@ export default function EmbeddedCheckout({
                   }}>
                   Thank you for your payment
                 </p>
-                <div className="w-full bg-[#050508]/80 border border-[#1e1e2e]/60 rounded-2xl p-4 text-left transition-all duration-500"
+                <div className="w-full bg-[#050508]/80 border border-[#1e1e2e]/60 rounded-xl p-3 text-left transition-all duration-500"
                   style={{
                     opacity: (successAnimPhase === 'circle' || successAnimPhase === 'check') ? 0 : 1,
                     transform: (successAnimPhase === 'circle' || successAnimPhase === 'check') ? 'translateY(20px)' : 'translateY(0)',
                     transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s',
                   }}>
-                  <span className="text-[10px] font-bold uppercase tracking-widest block mb-3 text-center text-gray-600 border-b border-[#1e1e2e]/60 pb-2">Transaction Details</span>
-                  <div className="space-y-2.5 text-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-widest block mb-2 text-center text-gray-600 border-b border-[#1e1e2e]/60 pb-1.5">Transaction Details</span>
+                  <div className="space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Amount Paid</span>
                       <span className="font-bold text-emerald-400">₹{Number(payment?.amount || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Transaction ID</span>
-                      <span className="font-mono text-xs text-gray-400">{payment?.trxId}</span>
+                      <span className="font-mono text-[10px] text-gray-400">{payment?.trxId}</span>
                     </div>
                     {payment?.utr && payment.utr !== '0' && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">UTR / Ref</span>
-                        <span className="font-mono text-xs text-gray-400">{payment.utr}</span>
+                        <span className="font-mono text-[10px] text-gray-400">{payment.utr}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Payment ID</span>
-                      <span className="font-mono text-xs text-gray-400">{payment?.paymentId}</span>
+                      <span className="font-mono text-[10px] text-gray-400">{payment?.paymentId}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Status</span>
@@ -360,21 +367,21 @@ export default function EmbeddedCheckout({
                   </div>
                 </div>
                 {successAnimPhase === 'redirect' && (
-                  <div className="mt-5 w-full animate-fade-in">
+                  <div className="mt-4 w-full animate-fade-in">
                     {redirectUrl && !redirecting ? (
                       <div className="flex flex-col items-center gap-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <svg className="w-4 h-4 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <svg className="w-3.5 h-3.5 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0l2.623 2.623a9.75 9.75 0 004.598 3.366 9.75 9.75 0 005.003-.429 9.75 9.75 0 003.86-2.578 9.75 9.75 0 002.178-3.992m-2.39-10.05h-4.992m4.992 0l-2.623-2.623a9.75 9.75 0 00-4.598-3.366 9.75 9.75 0 00-5.003.429 9.75 9.75 0 00-3.86 2.579 9.75 9.75 0 00-2.178 3.991" />
                           </svg>
-                          <span>Redirecting in <span className="font-bold text-white text-lg mx-0.5 tabular-nums">{redirectCountdown}</span>s...</span>
+                          <span>Redirecting in <span className="font-bold text-white text-base mx-0.5 tabular-nums">{redirectCountdown}</span>s...</span>
                         </div>
-                        <button onClick={onClose} className="text-xs text-gray-600 hover:text-gray-300 transition-colors mt-1 underline underline-offset-2">Stay on this page</button>
+                        <button onClick={onClose} className="text-[10px] text-gray-600 hover:text-gray-300 transition-colors mt-0.5 underline underline-offset-2">Stay on this page</button>
                       </div>
                     ) : redirecting ? (
-                      <div className="flex items-center justify-center gap-2 text-sm text-gray-500"><Spinner size="xs" /><span>Redirecting...</span></div>
+                      <div className="flex items-center justify-center gap-2 text-xs text-gray-500"><Spinner size="xs" /><span>Redirecting...</span></div>
                     ) : (
-                      <button onClick={onClose} className="text-sm text-gray-500 hover:text-white transition-colors underline underline-offset-2">Close</button>
+                      <button onClick={onClose} className="text-xs text-gray-500 hover:text-white transition-colors underline underline-offset-2">Close</button>
                     )}
                   </div>
                 )}
@@ -383,14 +390,14 @@ export default function EmbeddedCheckout({
 
             {/* ========== FAILED ========== */}
             {status === 'failed' && (
-              <div className="flex flex-col items-center text-center py-8 animate-fade-in">
-                <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5 bg-red-500/10 border border-red-500/30" style={{ boxShadow: '0 0 40px rgba(239,68,68,0.2)' }}>
-                  <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <div className="flex flex-col items-center text-center py-6 animate-fade-in">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-red-500/10 border border-red-500/30" style={{ boxShadow: '0 0 30px rgba(239,68,68,0.15)' }}>
+                  <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-1">Payment Failed</h3>
-                <p className="text-sm text-gray-500 mb-6">Something went wrong. Please try again.</p>
+                <h3 className="text-lg font-bold text-white mb-0.5">Payment Failed</h3>
+                <p className="text-xs text-gray-500 mb-5">Something went wrong. Please try again.</p>
                 <button onClick={() => {
                   setStatus('loading');
                   setPayment(null);
@@ -406,7 +413,7 @@ export default function EmbeddedCheckout({
                       else if (p.status === -1) setStatus('failed');
                       else setStatus('pending');
                     }).catch(() => setStatus('failed'));
-                }} className="w-full py-3 px-6 rounded-2xl font-bold text-sm bg-[#1a1a28] hover:bg-[#2a2a3e] text-white border border-[#1e1e2e] transition-all active:scale-[0.98]">
+                }} className="w-full py-2.5 px-5 rounded-xl font-semibold text-xs bg-[#1a1a28] hover:bg-[#2a2a3e] text-white border border-[#1e1e2e] transition-all active:scale-[0.98]">
                   Retry Payment
                 </button>
               </div>
@@ -414,51 +421,51 @@ export default function EmbeddedCheckout({
 
             {/* ========== PENDING (QR + Timer) ========== */}
             {status === 'pending' && (
-              <div className="flex flex-col items-center gap-4 animate-fade-in">
+              <div className="flex flex-col items-center gap-3 animate-fade-in">
                 {/* Header */}
-                <div className="w-full flex items-center gap-3 pb-2">
-                  <div className="w-10 h-10 rounded-xl bg-[#1a1a28] border border-[#1e1e2e] flex items-center justify-center font-bold text-white text-sm shrink-0">
+                <div className="w-full flex items-center gap-2 pb-1">
+                  <div className="w-8 h-8 rounded-lg bg-[#1a1a28] border border-[#1e1e2e] flex items-center justify-center font-bold text-white text-xs shrink-0">
                     {payment?.merchantName?.charAt(0)?.toUpperCase() || 'M'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm text-white truncate">{payment?.merchantName || 'Merchant'}</h4>
+                    <h4 className="font-semibold text-xs text-white truncate">{payment?.merchantName || 'Merchant'}</h4>
                     <span className="text-[10px] font-bold tracking-wider uppercase text-blue-400 flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7 3.1 5.52l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.46 1.89-3.2 3.61-.82-.34-3.7L23 12z" /></svg>
-                      Verified Merchant
+                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7 3.1 5.52l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.46 1.89-3.2 3.61-.82-.34-3.7L23 12z" /></svg>
+                      Verified
                     </span>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-[9px] block uppercase font-bold tracking-wider text-gray-600">Ref ID</span>
-                    <span className="text-[11px] font-mono text-gray-500">{payment?.trxId}</span>
+                    <span className="text-[8px] block uppercase font-bold tracking-wider text-gray-600">Ref</span>
+                    <span className="text-[10px] font-mono text-gray-500">{payment?.trxId}</span>
                   </div>
                 </div>
 
                 {/* Custom Amount Input */}
                 {payment?.isCustomAmount && !amountLocked ? (
-                  <div className="w-full flex flex-col items-center gap-4 py-4">
+                  <div className="w-full flex flex-col items-center gap-3 py-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Enter Amount to Pay</span>
-                    <div className="relative flex items-center rounded-2xl py-4 w-full max-w-xs bg-[#050508]/80 border border-[#1e1e2e]/60">
-                      <span className="absolute left-5 text-xl font-bold text-gray-500">₹</span>
+                    <div className="relative flex items-center rounded-xl py-3 w-full max-w-[220px] bg-[#050508]/80 border border-[#1e1e2e]/60">
+                      <span className="absolute left-4 text-lg font-bold text-gray-500">₹</span>
                       <input type="text" inputMode="decimal" placeholder="0.00" value={customAmount}
                         onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d{0,2}$/.test(v)) setCustomAmount(v); }}
-                        className="w-full bg-transparent text-3xl font-extrabold text-center outline-none border-none px-12 text-white" autoFocus />
+                        className="w-full bg-transparent text-2xl font-extrabold text-center outline-none border-none px-10 text-white" autoFocus />
                     </div>
                     <button onClick={handleSetAmount} disabled={!customAmount || parseFloat(customAmount) < 1 || creating}
-                      className="w-full max-w-xs py-3.5 px-6 rounded-2xl text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-                      style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', boxShadow: '0 4px 20px rgba(217,119,6,0.3)' }}>
-                      {creating ? <span className="flex items-center justify-center gap-2"><Spinner size="xs" />Processing...</span>
-                        : `Proceed to Pay ₹${customAmount ? parseFloat(customAmount).toFixed(2) : '0.00'}`}
+                      className="w-full max-w-[220px] py-2.5 px-5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                      style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', boxShadow: '0 4px 16px rgba(217,119,6,0.25)' }}>
+                      {creating ? <span className="flex items-center justify-center gap-1.5"><Spinner size="xs" />Processing...</span>
+                        : `Pay ₹${customAmount ? parseFloat(customAmount).toFixed(2) : '0.00'}`}
                     </button>
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col items-center py-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Payable Amount</span>
-                      <span className="text-3xl font-extrabold tracking-tight text-white flex items-baseline">
-                        <span className="text-xl font-semibold mr-1 text-gray-500">₹</span>
+                    <div className="flex flex-col items-center py-1">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-0.5">Amount</span>
+                      <span className="text-2xl font-extrabold tracking-tight text-white flex items-baseline">
+                        <span className="text-lg font-semibold mr-0.5 text-gray-500">₹</span>
                         {payment?.isCustomAmount ? parseFloat(customAmount).toFixed(2) : Number(payment?.amount || 0).toFixed(2)}
                       </span>
-                      <div className={`inline-flex items-center gap-1.5 mt-3 py-1.5 px-3.5 rounded-full text-[10px] font-semibold select-none ${qrExpired ? 'bg-red-500/10 text-red-400 border border-red-800/40' : 'bg-amber-500/10 text-amber-400 border border-amber-800/40'}`}>
+                      <div className={`inline-flex items-center gap-1.5 mt-2 py-1 px-3 rounded-full text-[10px] font-semibold select-none ${qrExpired ? 'bg-red-500/10 text-red-400 border border-red-800/40' : 'bg-amber-500/10 text-amber-400 border border-amber-800/40'}`}>
                         {qrExpired ? (
                           <span className="flex items-center gap-1.5 cursor-pointer" onClick={handleQrRetry}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
@@ -469,29 +476,29 @@ export default function EmbeddedCheckout({
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-center gap-2 py-2">
-                      <div className="relative p-3 rounded-2xl bg-white transition-all duration-300" style={{ opacity: qrExpired ? 0.6 : 1, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-                        <img key={qrRefreshKey} src={getQrUrl()} alt="UPI QR" className="w-[190px] h-[190px] sm:w-[220px] sm:h-[220px] block rounded-xl" />
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="relative p-2 rounded-xl bg-white transition-all duration-300" style={{ opacity: qrExpired ? 0.6 : 1, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                        <img key={qrRefreshKey} src={getQrUrl()} alt="UPI QR" className="w-[160px] h-[160px] sm:w-[180px] sm:h-[180px] block rounded-lg" />
                         {qrExpired && (
                           <button onClick={handleQrRetry} className="absolute inset-0 flex items-center justify-center cursor-pointer z-10">
-                            <div className="flex flex-col items-center gap-2 p-4 rounded-2xl backdrop-blur-md transition-all hover:scale-110 active:scale-95" style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}>
-                              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0l2.623 2.623a9.75 9.75 0 004.598 3.366 9.75 9.75 0 005.003-.429 9.75 9.75 0 003.86-2.578 9.75 9.75 0 002.178-3.992m-2.39-10.05h-4.992m4.992 0l-2.623-2.623a9.75 9.75 0 00-4.598-3.366 9.75 9.75 0 00-5.003.429 9.75 9.75 0 00-3.86 2.579 9.75 9.75 0 00-2.178 3.991" /></svg>
-                              <span className="text-xs font-bold">Refresh QR</span>
+                            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl backdrop-blur-md transition-all hover:scale-110 active:scale-95" style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}>
+                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0l2.623 2.623a9.75 9.75 0 004.598 3.366 9.75 9.75 0 005.003-.429 9.75 9.75 0 003.86-2.578 9.75 9.75 0 002.178-3.992m-2.39-10.05h-4.992m4.992 0l-2.623-2.623a9.75 9.75 0 00-4.598-3.366 9.75 9.75 0 00-5.003.429 9.75 9.75 0 00-3.86 2.579 9.75 9.75 0 00-2.178 3.991" /></svg>
+                              <span className="text-[10px] font-bold">Refresh QR</span>
                             </div>
                           </button>
                         )}
                       </div>
-                      {!qrExpired && <p className="text-[10px] text-gray-600 text-center max-w-[240px] leading-relaxed">Scan the QR code with any UPI application to pay.</p>}
+                      {!qrExpired && <p className="text-[10px] text-gray-600 text-center max-w-[200px] leading-relaxed">Scan QR with any UPI app</p>}
                     </div>
-                    <div className="flex items-center justify-center gap-2 py-1">
+                    <div className="flex items-center justify-center gap-1.5 py-0.5">
                       <Spinner size="xs" />
-                      <span className="text-[10px] font-medium text-gray-500">Waiting for payment detection...</span>
+                      <span className="text-[10px] font-medium text-gray-500">Waiting for payment...</span>
                     </div>
                   </>
                 )}
-                <div className="w-full text-center pt-2 border-t border-[#1e1e2e]/40">
-                  <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-gray-700">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                <div className="w-full text-center pt-1.5 border-t border-[#1e1e2e]/40">
+                  <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-widest text-gray-700">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                     <span>Secured by QuickGateway</span>
                   </div>
                 </div>
@@ -500,7 +507,8 @@ export default function EmbeddedCheckout({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -516,11 +524,7 @@ function StyleInjector() {
       .animate-success-glow { animation: success-glow 2s ease-in-out infinite; }
       @keyframes spin-slow { to { transform: rotate(360deg); } }
       .animate-spin-slow { animation: spin-slow 1.2s linear infinite; }
-      @keyframes sparkle-1 { 0%,100% { opacity:0; transform:scale(0.5) translate(0,0); } 50% { opacity:1; transform:scale(1.2) translate(5px,-5px); } }
-      @keyframes sparkle-2 { 0%,100% { opacity:0; transform:scale(0.5) translate(0,0); } 50% { opacity:0.8; transform:scale(1) translate(-5px,5px); } }
-      @keyframes sparkle-3 { 0%,100% { opacity:0; transform:scale(0.3) translate(0,0); } 50% { opacity:0.6; transform:scale(0.8) translate(8px,0); } }
       .tabular-nums { font-variant-numeric: tabular-nums; }
-      .duration-400 { transition-duration: 400ms; }
     `;
     document.head.appendChild(style);
   }, []);
