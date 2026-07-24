@@ -7,7 +7,7 @@ function loadQG() {
   return new Promise((resolve, reject) => {
     if (window.QuickGateway) return resolve(window.QuickGateway);
     // SDK ko bataye ki API calls QuickGateway server par jaye (relative /api nahi)
-    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in' };
+    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in/api' };
     const s = document.createElement('script');
     s.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     s.async = true;

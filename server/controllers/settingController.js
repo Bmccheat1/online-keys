@@ -13,8 +13,9 @@ const getSettings = async (req, res, next) => {
       result[s.key] = s.value;
     });
 
-    // Add gateway lock status (env var > DB)
-    result._gatewayLocked = !!(env.quickgatewayMerchantToken);
+    // Gateway lock is DISABLED — admin panel always works
+    // env var is just a fallback default, not a lock
+    result._gatewayLocked = false;
 
     res.json({ success: true, data: result });
   } catch (error) {
@@ -41,12 +42,7 @@ const getSetting = async (req, res, next) => {
 // @route   PUT /api/settings/:key
 const updateSetting = async (req, res, next) => {
   try {
-    // 🔒 Gateway settings locked when env var is set — only YOU can change
-    if (req.params.key === 'payment_gateway' && env.quickgatewayMerchantToken) {
-      res.status(403);
-      throw new Error('Payment gateway is locked via environment variable (QUICKGATEWAY_MERCHANT_TOKEN). Only the server owner can change it in .env file.');
-    }
-
+    // Gateway settings — admin panel always works (env is just fallback)
     const setting = await Setting.findOneAndUpdate(
       { key: req.params.key },
       { value: req.body.value, description: req.body.description || '' },

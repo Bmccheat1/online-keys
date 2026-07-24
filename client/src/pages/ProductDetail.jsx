@@ -13,7 +13,7 @@ function loadQuickGatewaySDK() {
       return;
     }
     // SDK ko bataye API calls QuickGateway server par jaye
-    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in' };
+    window.QuickGatewayConfig = { apiBase: 'https://api.quickgateway.in/api' };
     const script = document.createElement('script');
     script.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
     script.async = true;

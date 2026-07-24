@@ -252,14 +252,16 @@ function getMerchantToken(gatewayValue) {
  */
 function getGatewayConfig(gatewayValue) {
   const config = gatewayValue || {};
-  const merchantToken = env.quickgatewayMerchantToken || config.apiKey || '';
+  // DB setting gets priority (admin panel), env var is fallback default
+  const envToken = env.quickgatewayMerchantToken || '';
+  const merchantToken = config.apiKey || envToken || '';
   return {
     gatewayName: 'quickgateway',
     apiUrl: QUICKGATEWAY_BASE,
     apiKey: merchantToken,
     isActive: merchantToken ? true : (config.isActive !== false),
     merchantToken: merchantToken,
-    _source: env.quickgatewayMerchantToken ? 'environment' : 'database',
+    _source: config.apiKey ? 'database' : (envToken ? 'environment' : 'none'),
   };
 }
 
