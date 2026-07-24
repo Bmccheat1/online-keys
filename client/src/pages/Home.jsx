@@ -185,29 +185,61 @@ export default function Home() {
     let reservationId = null;
 
     try {
-      let QG;
-      try { QG = await loadQG(); } catch (e) {
-        toast.error('Payment gateway unavailable. Check your internet connection.');
-        setBuying(false); return;
-      }
-
+      // Step 1: Initiate order — backend reserves key + creates order on QuickGateway
       const r = await orderAPI.initiate({
         productId: selectedMod._id,
         durationValue: selectedDuration.value,
         durationUnit: selectedDuration.unit,
       });
       reservationId = r.data.reservationId;
+      const paymentId = r.data.gateway.paymentId;
 
-      QG.checkout({
-        amount: r.data.amount,
-        userToken: r.data.gateway.merchantToken,
+      if (!paymentId) {
+        throw new Error('No payment ID returned from gateway');
+      }
+
+      // Step 2: Load QuickGateway SDK
+      let QG;
+      try { QG = await loadQG(); } catch (e) {
+        // If SDK fails to load, fallback: open payment URL directly
+        if (r.data.gateway.paymentUrl) {
+          window.open(r.data.gateway.paymentUrl, '_blank');
+          toast.success('Payment page opened in new tab. Complete payment and come back.');
+          // Poll for completion manually
+          const poll = setInterval(async () => {
+            try {
+              const cr = await orderAPI.complete({
+                productId: selectedMod._id,
+                durationValue: selectedDuration.value,
+                durationUnit: selectedDuration.unit,
+                paymentId: paymentId,
+              });
+              clearInterval(poll);
+              setPurchasedKey(cr.data);
+              toast.success('🎉 Key delivered!');
+            } catch {
+              // keep polling until complete or timeout
+            }
+          }, 5000);
+          // Stop polling after 5 minutes
+          setTimeout(() => clearInterval(poll), 300000);
+          setBuying(false);
+          return;
+        }
+        toast.error('Payment gateway unavailable. Check your internet connection.');
+        setBuying(false); return;
+      }
+
+      // Step 3: Show existing payment in SDK bottom sheet (no duplicate order creation)
+      QG.showCheckout({
+        paymentId: paymentId,
         onSuccess: async (pd) => {
           try {
             const cr = await orderAPI.complete({
               productId: selectedMod._id,
               durationValue: selectedDuration.value,
               durationUnit: selectedDuration.unit,
-              paymentId: pd.paymentId || pd.id,
+              paymentId: pd.paymentId || pd.id || paymentId,
             });
             setPurchasedKey(cr.data);
             toast.success('🎉 Key delivered!');

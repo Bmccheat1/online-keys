@@ -15,7 +15,7 @@ function loadQuickGatewaySDK() {
       return;
     }
     const script = document.createElement('script');
-    script.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
+    script.src = 'https://pay.quickgateway.in/sdk/quickgateway.js';
     script.async = true;
     script.onload = () => {
       if (window.QuickGateway) resolve(window.QuickGateway);
