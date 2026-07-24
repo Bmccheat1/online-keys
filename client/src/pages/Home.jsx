@@ -1,21 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { productAPI, orderAPI, couponAPI } from '../api';
+import CheckoutTrigger from '../components/checkout/CheckoutTrigger';
 import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, Clock, Percent, Sparkles } from 'lucide-react';
-
-function loadQG() {
-  return new Promise((resolve, reject) => {
-    if (window.QuickGateway) return resolve(window.QuickGateway);
-    // API calls go through backend proxy → same origin → no CORS issues
-    window.QuickGatewayConfig = { apiBase: '/api/quickgateway-proxy' };
-    const s = document.createElement('script');
-    s.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
-    s.async = true;
-    s.onload = () => window.QuickGateway ? resolve(window.QuickGateway) : reject(new Error('SDK loaded but QuickGateway not found'));
-    s.onerror = () => reject(new Error('SDK script network error'));
-    document.head.appendChild(s);
-  });
-}
 
 function Bg() {
   return (
@@ -121,7 +108,6 @@ export default function Home() {
   const [selectedMod, setSelectedMod] = useState(null);
   const [selectedDuration, setSelectedDuration] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [buying, setBuying] = useState(false);
   const [purchasedKey, setPurchasedKey] = useState(null);
 
   // Coupon
@@ -180,59 +166,24 @@ export default function Home() {
     } finally { setCouponLoading(false); }
   };
 
-  const handleBuy = useCallback(async () => {
-    if (!selectedMod || !selectedDuration) return toast.error('Select mod & duration');
-    setBuying(true);
+  const handleInitiate = () => orderAPI.initiate({
+    productId: selectedMod._id,
+    durationValue: selectedDuration.value,
+    durationUnit: selectedDuration.unit,
+  });
 
-    let reservationId = null;
-    let paymentProcessed = false;
+  const handleComplete = async ({ paymentId }) => {
+    const res = await orderAPI.complete({
+      productId: selectedMod._id,
+      durationValue: selectedDuration.value,
+      durationUnit: selectedDuration.unit,
+      paymentId,
+    });
+    setPurchasedKey(res.data);
+    toast.success('Key delivered!');
+  };
 
-    try {
-      // Step 1: Initiate — backend reserves key + creates QuickGateway order
-      const r = await orderAPI.initiate({
-        productId: selectedMod._id,
-        durationValue: selectedDuration.value,
-        durationUnit: selectedDuration.unit,
-      });
-      reservationId = r.data.reservationId;
-
-      // Step 2: Load QuickGateway SDK
-      const QG = await loadQG();
-
-      // Step 3: Show existing payment sheet (backend already created the order)
-      // Using showCheckout instead of checkout to avoid dual order creation
-      QG.showCheckout({
-        paymentId: r.data.paymentId,
-        onSuccess: async (pd) => {
-          try {
-            paymentProcessed = true;
-            const cr = await orderAPI.complete({
-              productId: selectedMod._id,
-              durationValue: selectedDuration.value,
-              durationUnit: selectedDuration.unit,
-              paymentId: pd.paymentId || pd.id,
-            });
-            setPurchasedKey(cr.data);
-            toast.success('🎉 Key delivered!');
-          } catch (e) {
-            toast.error(e.response?.data?.message || 'Key delivery failed');
-          }
-          setBuying(false);
-        },
-        onFailure: async (e) => {
-          if (reservationId && !paymentProcessed) {
-            try { await orderAPI.release({ reservationId }); } catch {}
-          }
-          toast.error(e?.message || 'Payment cancelled');
-          setBuying(false);
-        },
-      });
-    } catch (e) {
-      if (reservationId) { try { await orderAPI.release({ reservationId }); } catch {} }
-      toast.error(e.response?.data?.message || 'Failed to start payment. Check that the merchant token is configured in admin settings.');
-      setBuying(false);
-    }
-  }, [selectedMod, selectedDuration]);
+  const handleRelease = (reservationId) => orderAPI.release({ reservationId });
 
   if (loading) return <div className="min-h-screen flex items-center justify-center p-4"><div className="animate-pulse space-y-3 w-full max-w-xs sm:max-w-sm"><div className="h-12 sm:h-14 bg-[#1a1a28] rounded-xl"/><div className="h-12 sm:h-14 bg-[#1a1a28] rounded-xl"/><div className="h-14 sm:h-16 bg-[#1a1a28] rounded-xl"/></div></div>;
   if (purchasedKey) return <div className="min-h-screen flex items-center justify-center p-3 sm:p-4"><Bg /><SuccessView purchasedKey={purchasedKey} mod={selectedMod} onReset={reset} /></div>;
@@ -377,14 +328,14 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Buy button */}
-                <button onClick={handleBuy} disabled={buying} className="w-full py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/40 transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-60">
-                  {buying ? (
-                    <><span className="animate-spin w-4 h-4 border-2 border-white/40 border-t-white rounded-full" /> Processing...</>
-                  ) : (
-                    <><Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> Pay ₹{discountedPrice.toLocaleString()} <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></>
-                  )}
-                </button>
+                {/* Buy button — React component approach, no SDK script */}
+                <CheckoutTrigger
+                  initiateOrder={handleInitiate}
+                  onComplete={handleComplete}
+                  releaseReservation={handleRelease}
+                  disabled={!selectedMod || !selectedDuration}
+                  buttonLabel={<><Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> Pay ₹{discountedPrice.toLocaleString()} <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></>}
+                />
               </div>
             )}
 

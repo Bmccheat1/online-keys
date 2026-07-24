@@ -1,32 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { productAPI, orderAPI } from '../api';
+import CheckoutTrigger from '../components/checkout/CheckoutTrigger';
 import DurationSelector from '../components/checkout/DurationSelector';
 import Loader from '../components/common/Loader';
 import { KeyRound, LogIn } from 'lucide-react';
-
-// Load QuickGateway SDK dynamically
-function loadQuickGatewaySDK() {
-  return new Promise((resolve, reject) => {
-    if (window.QuickGateway) {
-      resolve(window.QuickGateway);
-      return;
-    }
-    // API calls go through backend proxy → same origin → no CORS issues
-    window.QuickGatewayConfig = { apiBase: '/api/quickgateway-proxy' };
-    const script = document.createElement('script');
-    script.src = 'https://api.quickgateway.in/sdk/quickgateway.js';
-    script.async = true;
-    script.onload = () => {
-      if (window.QuickGateway) resolve(window.QuickGateway);
-      else reject(new Error('QuickGateway SDK loaded but not found'));
-    };
-    script.onerror = () => reject(new Error('Failed to load QuickGateway SDK'));
-    document.head.appendChild(script);
-  });
-}
 
 export default function ModDetail() {
   const { user, logout } = useAuth();
@@ -34,9 +14,7 @@ export default function ModDetail() {
   const [mod, setMod] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedDuration, setSelectedDuration] = useState(null);
-  const [buying, setBuying] = useState(false);
   const [purchasedKey, setPurchasedKey] = useState(null);
-  const [paymentStep, setPaymentStep] = useState('idle');
 
   useEffect(() => {
     productAPI.getById(id).then((res) => {
@@ -50,70 +28,24 @@ export default function ModDetail() {
     }).finally(() => setLoading(false));
   }, [id]);
 
-  const handleBuy = useCallback(async () => {
-    if (!selectedDuration) { toast.error('Please select a duration'); return; }
+  const handleInitiate = () => orderAPI.initiate({
+    productId: mod._id,
+    durationValue: selectedDuration.value,
+    durationUnit: selectedDuration.unit,
+  });
 
-    setBuying(true);
-    setPaymentStep('initiating');
+  const handleComplete = async ({ paymentId }) => {
+    const res = await orderAPI.complete({
+      productId: mod._id,
+      durationValue: selectedDuration.value,
+      durationUnit: selectedDuration.unit,
+      paymentId,
+    });
+    setPurchasedKey(res.data);
+    toast.success('Payment successful! Your key is ready.');
+  };
 
-    let reservationId = null;
-    let paymentProcessed = false;
-
-    try {
-      // Step 1: Initiate order — guest (no auth needed)
-      const initiateRes = await orderAPI.initiate({
-        productId: mod._id,
-        durationValue: selectedDuration.value,
-        durationUnit: selectedDuration.unit,
-      });
-      reservationId = initiateRes.data.reservationId;
-
-      // Step 2: Load QuickGateway SDK & show existing payment sheet
-      setPaymentStep('payment');
-      const QG = await loadQuickGatewaySDK();
-
-      // Use showCheckout with the paymentId from backend (avoids dual order creation)
-      QG.showCheckout({
-        paymentId: initiateRes.data.paymentId,
-        onSuccess: async function (paymentData) {
-          // Step 3: Payment success → verify & deliver key
-          paymentProcessed = true;
-          setPaymentStep('verifying');
-          try {
-            const completeRes = await orderAPI.complete({
-              productId: mod._id,
-              durationValue: selectedDuration.value,
-              durationUnit: selectedDuration.unit,
-              paymentId: paymentData.paymentId || paymentData.id,
-            });
-            setPurchasedKey(completeRes.data);
-            setPaymentStep('done');
-            toast.success('Payment successful! Your key is ready.');
-            setBuying(false);
-          } catch (err) {
-            toast.error(err.response?.data?.message || 'Payment verified but key delivery failed. Contact support.');
-            setPaymentStep('idle');
-            setBuying(false);
-          }
-        },
-        onFailure: function (error) {
-          if (reservationId && !paymentProcessed) {
-            orderAPI.release({ reservationId }).catch(() => {});
-          }
-          toast.error(error?.message || 'Payment was cancelled or failed. Please try again.');
-          setPaymentStep('idle');
-          setBuying(false);
-        },
-      });
-    } catch (error) {
-      if (reservationId) {
-        try { await orderAPI.release({ reservationId }); } catch {}
-      }
-      toast.error(error.response?.data?.message || 'Failed to initiate payment. Please try again.');
-      setPaymentStep('idle');
-      setBuying(false);
-    }
-  }, [mod, selectedDuration]);
+  const handleRelease = (reservationId) => orderAPI.release({ reservationId });
 
   // Loading state
   if (loading) return <Loader />;
@@ -142,16 +74,6 @@ export default function ModDetail() {
       </div>
     );
   }
-
-  // Button text based on payment step
-  const getButtonText = () => {
-    switch (paymentStep) {
-      case 'initiating': return 'Initializing...';
-      case 'payment': return 'Opening Checkout...';
-      case 'verifying': return 'Verifying Payment...';
-      default: return buying ? 'Processing...' : 'Buy Now — ₹' + (selectedDuration?.price?.toLocaleString() || '');
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 md:py-8">
@@ -197,18 +119,14 @@ export default function ModDetail() {
                   <p className="text-xs text-dark-500 mt-1">Please select a different duration</p>
                 </div>
               ) : (
-                <button
-                  onClick={handleBuy}
-                  disabled={buying}
-                  className="btn-primary w-full text-center py-3 text-lg relative"
-                >
-                  {buying && (
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <span className="animate-spin inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                    </span>
-                  )}
-                  {getButtonText()}
-                </button>
+                <CheckoutTrigger
+                  initiateOrder={handleInitiate}
+                  onComplete={handleComplete}
+                  releaseReservation={handleRelease}
+                  disabled={!selectedDuration}
+                  buttonLabel={`Buy Now — ₹${selectedDuration?.price?.toLocaleString() || ''}`}
+                  buttonClassName="btn-primary w-full text-center py-3 text-lg"
+                />
               )}
               <p className="text-center text-xs text-dark-500 mt-2">
                 🔒 No login required • Pay via UPI (GPay, PhonePe, Paytm)
