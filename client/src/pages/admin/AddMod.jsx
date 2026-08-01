@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api, { productAPI } from '../../api';
-import { compressImage } from '../../utils/compressImage';
+import { compressImage, makeThumb } from '../../utils/compressImage';
 import Loader from '../../components/common/Loader';
 import { Package, Plus, X, ArrowLeft, Sparkles, UploadCloud, Trash2 } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export default function AddMod() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', image: '', platform: 'both', category: '', isBestSeller: false, durations: [{ ...emptyDuration }] });
+  const [form, setForm] = useState({ title: '', description: '', image: '', imageThumb: '', platform: 'both', category: '', isBestSeller: false, durations: [{ ...emptyDuration }] });
 
   useEffect(() => {
     if (isEdit) {
@@ -25,6 +25,7 @@ export default function AddMod() {
           title: p.title,
           description: p.description || '',
           image: p.image || '',
+          imageThumb: p.imageThumb || '',
           platform: p.platform || 'both',
           category: p.category || '',
           isBestSeller: p.isBestSeller || false,
@@ -51,13 +52,14 @@ export default function AddMod() {
     setForm({ ...form, durations: form.durations.filter((_, i) => i !== index) });
   };
 
-  // Upload product image directly to the server (compressed first — keeps DB + API light)
+  // Upload product image + thumbnail (thumbnail keeps lists/cards fast)
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); e.target.value = ''; return; }
     setUploading(true);
     try {
+      // 1. Full image (~900px) for the product page
       const compressed = await compressImage(file, { maxSize: 900, quality: 0.82 });
       const fd = new FormData();
       fd.append('image', compressed);
@@ -68,7 +70,16 @@ export default function AddMod() {
         headers: { 'Content-Type': undefined },
       });
       if (res.data?.success) {
-        setForm((f) => ({ ...f, image: res.data.url }));
+        // 2. Tiny thumbnail (~320px) for home grid + flash marquee
+        let thumbUrl = '';
+        try {
+          const thumbFile = await makeThumb(file, { maxSize: 320, quality: 0.75 });
+          const tfd = new FormData();
+          tfd.append('image', thumbFile);
+          const tres = await api.post('/upload', tfd, { headers: { 'Content-Type': undefined } });
+          if (tres.data?.success) thumbUrl = tres.data.url;
+        } catch { /* thumbnail optional — card falls back to letter tile */ }
+        setForm((f) => ({ ...f, image: res.data.url, imageThumb: thumbUrl }));
         toast.success('Image uploaded!');
       } else {
         toast.error(res.data?.message || 'Upload failed');

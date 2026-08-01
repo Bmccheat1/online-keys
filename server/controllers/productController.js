@@ -58,31 +58,70 @@ async function attachAvailability(products) {
 // @route   GET /api/products
 const getProducts = async (req, res, next) => {
   try {
-    const { gameId, active, page = 1, limit = 20, noimage } = req.query;
+    const { gameId, active, page = 1, limit = 20, noimage, flashOnly } = req.query;
     const filter = {};
     
     if (gameId) filter.gameId = gameId;
     if (active === 'true' || !active) filter.isActive = true;
+    if (flashOnly === '1' || flashOnly === 'true') {
+      // Only mods with a LIVE flash deal (for the home marquee)
+      filter['durations.flashSale.isActive'] = true;
+      filter['durations.flashSale.endAt'] = { $gt: new Date() };
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const isNoimage = noimage === '1' || noimage === 'true';
+    const limitNum = Math.max(1, Math.min(parseInt(limit) || 20, 100));
 
-    // When `noimage=1` the heavy base64 image field is excluded from the response —
-    // used by title-only consumers (header typewriter, purchase toasts) to keep
-    // the payload tiny (a mod list with images can be megabytes of base64).
-    const projection = noimage === '1' || noimage === 'true' ? { image: 0 } : null;
+    // List payload strategy (keeps every card looking IDENTICAL to today):
+    //  - Mods WITH a thumbnail (new uploads) → only the tiny thumb is sent (fast).
+    //  - Legacy mods WITHOUT a thumbnail → their existing full image is still
+    //    sent, so cards keep showing the real image (no letter-tile regression).
+    //  - noimage=1 → title-only (header typewriter, purchase toasts).
+    const project = {
+      title: 1, description: 1, platform: 1, category: 1,
+      isBestSeller: 1, durations: 1, isActive: 1,
+      createdAt: 1, updatedAt: 1,
+      imageThumb: isNoimage ? '' : 1,
+      image: isNoimage
+        ? ''
+        : {
+            $cond: [
+              { $and: [{ $ne: [{ $ifNull: ['$imageThumb', ''] }, ''] }] },
+              '',        // has a thumbnail → drop the heavy full image
+              '$image',  // legacy → keep the full image (look unchanged)
+            ],
+          },
+      'gameId.name': 1,
+      'gameId.image': 1,
+    };
 
     let [products, total] = await Promise.all([
-      Product.find(filter, projection)
-        .populate('gameId', 'name image')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
+      // Aggregation lets us pick image vs thumbnail PER PRODUCT (find can't)
+      Product.aggregate([
+        { $match: filter },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limitNum },
+        {
+          $lookup: { from: 'games', localField: 'gameId', foreignField: '_id', as: 'gameId' },
+        },
+        {
+          $set: {
+            gameId: { $cond: [{ $eq: [{ $size: '$gameId' }, 0] }, null, { $arrayElemAt: ['$gameId', 0] }] },
+          },
+        },
+        { $project: project },
+      ]),
       Product.countDocuments(filter),
     ]);
 
     // Attach real-time key availability
     products = await attachAvailability(products);
+
+    // Expose the image as the client expects: thumb when available,
+    // otherwise the legacy full image (look preserved for old mods).
+    products = products.map((p) => ({ ...p, image: p.imageThumb || p.image || '' }));
 
     // Filter out completely sold-out products (optional)
     // products = products.filter(p => p.totalAvailableKeys > 0);
@@ -91,7 +130,7 @@ const getProducts = async (req, res, next) => {
       success: true,
       count: products.length,
       total,
-      totalPages: Math.ceil(total / parseInt(limit)),
+      totalPages: Math.ceil(total / limitNum),
       currentPage: parseInt(page),
       data: products,
     });

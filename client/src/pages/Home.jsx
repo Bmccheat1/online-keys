@@ -102,19 +102,44 @@ function Countdown({ endAt, className = '' }) {
 /* ─── Home — minimal hero + flash marquee + filters + catalog ─── */
 export default function Home() {
   const [mods, setMods] = useState([]);
+  const [flashMods, setFlashMods] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState('all');
   // Search now lives in the Header — it drives this page via the ?q= URL param
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q') || '';
 
   useEffect(() => {
-    productAPI.getAll({ active: 'true', limit: '50' }).then((res) => {
+    // Catalog: first page only (16) — list responses carry small thumbnails only
+    productAPI.getAll({ active: 'true', limit: '16', page: '1' }).then((res) => {
       setMods(res.data || []);
+      setHasMore((res.data || []).length >= 16);
     }).finally(() => setLoading(false));
+
+    // Flash deals: dedicated light fetch (only live flash mods + thumbnails)
+    productAPI.getAll({ active: 'true', limit: '50', flashOnly: '1' })
+      .then((res) => setFlashMods(res.data || []))
+      .catch(() => {});
   }, []);
 
-  const flashMods = mods.filter((m) => m.durations?.some(isDurFlashActive));
+  // Load next page of the catalog (appends to the grid)
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const res = await productAPI.getAll({ active: 'true', limit: '16', page: String(next) });
+      const data = res.data || [];
+      setMods((m) => [...m, ...data]);
+      setPage(next);
+      setHasMore(data.length >= 16);
+    } catch { /* ignore */ } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Earliest active flash end time (drives the "Ends in" timer above the marquee)
   const flashEnds = flashMods.flatMap((m) => m.durations.filter(isDurFlashActive).map((d) => d.flashSale.endAt));
@@ -343,6 +368,19 @@ export default function Home() {
                   </Link>
                 );
               })}
+            </div>
+          )}
+
+          {/* ─── Load More (catalog is paginated — 16 at a time) ─── */}
+          {!loading && hasMore && filteredMods.length > 0 && (
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="chip chip-gray cursor-pointer !px-6 !py-2.5 !text-xs sm:!text-sm font-semibold hover:border-amber-500/50 hover:text-amber-400 transition-all disabled:opacity-50 disabled:cursor-wait"
+              >
+                {loadingMore ? 'Loading…' : 'Load More'}
+              </button>
             </div>
           )}
         </div>

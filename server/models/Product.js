@@ -52,6 +52,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  imageThumb: {
+    type: String,
+    default: '',
+  },
   platform: {
     type: String,
     enum: ['android', 'ios', 'both'],

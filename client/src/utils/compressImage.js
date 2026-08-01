@@ -10,17 +10,18 @@
  *   fd.append('image', file);
  */
 
-export function compressImage(file, { maxSize = 900, quality = 0.82 } = {}) {
+/** Shared canvas resize pipeline */
+function resizeImage(file, maxSize, quality, keepSmall) {
   return new Promise((resolve, reject) => {
     // Already small (<=300KB) — keep original, preserves PNG transparency
-    if (file.size <= 300 * 1024) return resolve(file);
+    if (keepSmall && file.size <= 300 * 1024) return resolve(file);
 
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
-        if (width <= maxSize && height <= maxSize && file.size <= 1024 * 1024) {
+        if (keepSmall && width <= maxSize && height <= maxSize && file.size <= 1024 * 1024) {
           return resolve(file);
         }
         const scale = Math.min(1, maxSize / Math.max(width, height));
@@ -48,4 +49,14 @@ export function compressImage(file, { maxSize = 900, quality = 0.82 } = {}) {
     reader.onerror = () => reject(new Error('Could not read file'));
     reader.readAsDataURL(file);
   });
+}
+
+/** Full-size mod image (~900px) — used on the product page */
+export function compressImage(file, { maxSize = 900, quality = 0.82 } = {}) {
+  return resizeImage(file, maxSize, quality, true);
+}
+
+/** Small thumbnail (~320px) — used in lists/cards/marquee to keep payloads tiny */
+export function makeThumb(file, { maxSize = 320, quality = 0.75 } = {}) {
+  return resizeImage(file, maxSize, quality, false);
 }
