@@ -41,7 +41,13 @@ const allowedOrigins = [
 if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 
 // Connect to MongoDB (with serverless caching)
-connectDB();
+connectDB().then(() => {
+  // On every cold start, release keys whose payment window (10 min) already expired
+  const { cleanupExpiredReservations } = require('./controllers/orderController');
+  return cleanupExpiredReservations();
+}).catch(() => {
+  /* DB connection handled inside connectDB */
+});
 
 // ─── Middleware ──────────────────────────────────────────
 app.use(compression()); // Compress responses (70-80% smaller)

@@ -1,0 +1,6 @@
+import{c as t,j as e,K as s}from"./index-Drkqy2lu.js";import{L as a}from"./vendor-CG8VVLXi.js";import"./utils-DhXgJQ-f.js";/**
+ * @license lucide-react v1.26.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const n=[["path",{d:"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8",key:"5wwlr5"}],["path",{d:"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",key:"r6nss1"}]],o=t("house",n);function c(){return e.jsx("div",{className:"min-h-[70vh] flex items-center justify-center px-4",children:e.jsxs("div",{className:"text-center animate-fade-up",children:[e.jsx("div",{className:"mx-auto w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mb-5 shadow-gold-lg",children:e.jsx(s,{className:"w-8 h-8 text-white"})}),e.jsx("h1",{className:"text-7xl font-bold font-display mb-2",children:e.jsx("span",{className:"text-gradient",children:"404"})}),e.jsx("p",{className:"text-xl text-gray-400 mb-6",children:"Page not found"}),e.jsxs(a,{to:"/",className:"btn-gold inline-flex items-center gap-2 px-6 py-2.5 text-sm",children:[e.jsx(o,{className:"w-4 h-4"})," Go Home"]})]})})}export{c as default};

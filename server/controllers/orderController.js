@@ -406,6 +406,9 @@ const completeOrder = async (req, res, next) => {
 // @route   GET /api/orders/my
 const getMyOrders = async (req, res, next) => {
   try {
+    // Release any keys whose payment window (10 min) already expired
+    await cleanupExpiredReservations();
+
     const orders = await Order.find({ userId: req.user._id })
       .populate('items.productId', 'title image')
       .sort({ createdAt: -1 })
@@ -421,6 +424,9 @@ const getMyOrders = async (req, res, next) => {
 // @route   GET /api/orders
 const getAllOrders = async (req, res, next) => {
   try {
+    // Release any keys whose payment window (10 min) already expired
+    await cleanupExpiredReservations();
+
     const { page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -475,6 +481,9 @@ const releaseReservation = async (req, res, next) => {
 // @route   GET /api/orders/payment-status/:paymentId
 const checkPaymentStatus = async (req, res, next) => {
   try {
+    // Release any keys whose payment window (10 min) already expired
+    await cleanupExpiredReservations();
+
     const { paymentId } = req.params;
     if (!paymentId) {
       res.status(400);
@@ -492,4 +501,4 @@ const checkPaymentStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { initiateOrder, completeOrder, releaseReservation, getMyOrders, getAllOrders, checkPaymentStatus };
+module.exports = { cleanupExpiredReservations, initiateOrder, completeOrder, releaseReservation, getMyOrders, getAllOrders, checkPaymentStatus };

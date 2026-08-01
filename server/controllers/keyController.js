@@ -4,6 +4,9 @@ const { Key, Product } = require('../models');
 // @route   GET /api/keys/:productId
 const getKeys = async (req, res, next) => {
   try {
+    // Release any keys whose payment window (10 min) already expired
+    await cleanupExpiredReservations();
+
     const { status, page = 1, limit = 50 } = req.query;
     const filter = { productId: req.params.productId };
     
@@ -121,6 +124,24 @@ const clearExpiredReservations = async (req, res, next) => {
   }
 };
 
+// @desc    Vercel cron — hourly safety net for stuck reservations
+// @route   POST /api/keys/cron/cleanup
+const cronCleanup = async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    if (secret) {
+      const provided = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      if (provided !== secret) {
+        return res.status(403).json({ success: false, message: 'Forbidden' });
+      }
+    }
+    await cleanupExpiredReservations();
+    res.json({ success: true, message: 'Cron cleanup completed' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get key stats grouped by product + duration (Admin)
 // @route   GET /api/keys/stats
 const getKeyStats = async (req, res, next) => {
@@ -165,4 +186,4 @@ const getKeyStats = async (req, res, next) => {
   }
 };
 
-module.exports = { getKeys, addKeys, deleteKey, getKeyStats, clearExpiredReservations };
+module.exports = { getKeys, addKeys, deleteKey, getKeyStats, clearExpiredReservations, cronCleanup };

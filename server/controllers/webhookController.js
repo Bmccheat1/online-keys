@@ -13,13 +13,15 @@
  *   POST with JSON body: { trxId, paymentId, amount, status, utr, method, ... }
  *   Headers: X-Webhook-Signature, X-Webhook-Nonce, X-Webhook-Timestamp
  * 
- * 🔒 SECURITY: The signature is verified (HMAC-SHA256) before anything is
- * processed. The webhook secret comes from:
+ * 🔒 SECURITY: If the gateway sends an X-Webhook-Signature header, it is
+ * verified (HMAC-SHA256) and the request is rejected on mismatch. If the
+ * gateway sends NO signature (QuickGateway has no webhook-secret field),
+ * the webhook is still processed — real trust comes from the
+ * server-to-server `verifyPayment` call against the gateway API below,
+ * which an attacker cannot forge. The webhook secret comes from:
  *   1. WEBHOOK_SECRET environment variable, or
  *   2. the `webhook_secret` setting (Admin → Settings page), or
  *   3. the gateway merchant token as a last-resort fallback.
- * If no secret is configured at all, the webhook FAILS CLOSED (401) so
- * nobody can forge payment-success events and steal keys.
  */
 
 const crypto = require('crypto');
@@ -79,7 +81,12 @@ const quickgatewayWebhook = async (req, res) => {
 
     console.log(`[Webhook] Received: paymentId=${paymentId}, status=${status}, trxId=${trxId}`);
 
-    // ─── 0. 🔒 Verify signature — FAIL CLOSED ─────────────────
+    // ─── 0. 🔒 Signature verification (conditional) ────────────
+    // QuickGateway has NO webhook-secret field, so it typically sends no
+    // signature header at all. When a signature IS present we verify it
+    // (HMAC-SHA256) and reject on mismatch. When absent we still proceed —
+    // the real security boundary is the server-to-server `verifyPayment`
+    // call against the gateway API below, which cannot be forged.
     const webhookSetting = await Setting.findOne({ key: 'webhook_secret' }).lean();
     const gatewaySetting = await Setting.findOne({ key: 'payment_gateway' }).lean();
     const gatewayConfig = getGatewayConfig(gatewaySetting?.value);
@@ -88,17 +95,18 @@ const quickgatewayWebhook = async (req, res) => {
       (webhookSetting?.value && String(webhookSetting.value).trim()) ||
       gatewayConfig.merchantToken;
 
-    if (!webhookSecret) {
-      console.log('[Webhook] ❌ No webhook secret configured — rejecting (fail closed)');
-      return res.status(401).json({
-        success: false,
-        message: 'Webhook secret not configured. Set WEBHOOK_SECRET or webhook_secret setting.',
-      });
-    }
-
-    if (!verifySignature(req, webhookSecret)) {
-      console.log('[Webhook] ❌ Invalid signature — rejecting');
-      return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
+    const signature = req.headers['x-webhook-signature'];
+    if (signature) {
+      if (!webhookSecret) {
+        console.log('[Webhook] ❌ Signature present but no secret configured — rejecting');
+        return res.status(401).json({ success: false, message: 'Webhook signature present but no secret configured.' });
+      }
+      if (!verifySignature(req, webhookSecret)) {
+        console.log('[Webhook] ❌ Invalid signature — rejecting');
+        return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
+      }
+    } else {
+      console.log('[Webhook] ℹ️ No signature header (gateway has no webhook secret) — relying on server-to-server verification');
     }
 
     // ─── Validate ────────────────────────────────────────────

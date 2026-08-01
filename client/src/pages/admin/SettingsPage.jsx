@@ -15,8 +15,6 @@ export default function SettingsPage() {
     apiKey: '',
     isActive: true,
   });
-  const [webhookSecret, setWebhookSecret] = useState('');
-  const [savingWebhook, setSavingWebhook] = useState(false);
 
   useEffect(() => {
     settingAPI.getAll().then((res) => {
@@ -24,7 +22,6 @@ export default function SettingsPage() {
       setSettings(data);
       setGatewayLocked(!!data._gatewayLocked);
       if (data.site_name) setSiteName(data.site_name);
-      if (data.webhook_secret) setWebhookSecret(String(data.webhook_secret));
       if (data.payment_gateway) {
         const g = data.payment_gateway;
         setPaymentForm({
@@ -71,23 +68,6 @@ export default function SettingsPage() {
       toast.error('Failed to save');
     } finally {
       setSavingPayment(false);
-    }
-  };
-
-  const handleSaveWebhook = async (e) => {
-    e.preventDefault();
-    if (!webhookSecret.trim()) { toast.error('Enter Webhook Secret'); return; }
-    setSavingWebhook(true);
-    try {
-      await settingAPI.update('webhook_secret', {
-        value: webhookSecret.trim(),
-        description: 'Secret used to verify QuickGateway webhook signatures (HMAC-SHA256)',
-      });
-      toast.success('Webhook secret saved!');
-    } catch (error) {
-      toast.error('Failed to save');
-    } finally {
-      setSavingWebhook(false);
     }
   };
 
@@ -176,45 +156,6 @@ export default function SettingsPage() {
               </button>
             </form>
           )}
-      </div>
-
-      {/* ─── Webhook Secret ─── */}
-      <div className="panel p-5 md:p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <ShieldCheck className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white font-display">Webhook Secret</h3>
-            <p className="text-sm text-gray-500">Verify QuickGateway webhook callbacks (HMAC-SHA256)</p>
-          </div>
-        </div>
-
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 mb-6 text-sm text-gray-300">
-          <p>🔒 Payment callbacks (<code className="text-amber-400">/api/webhooks/quickgateway</code>) are rejected unless the <strong>X-Webhook-Signature</strong> header matches this secret. Set the same secret in your QuickGateway dashboard.</p>
-        </div>
-
-        <form onSubmit={handleSaveWebhook} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1.5">
-              Webhook Secret <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={webhookSecret}
-              onChange={(e) => setWebhookSecret(e.target.value)}
-              className="w-full input-field font-mono"
-              placeholder="Enter the webhook secret shared by QuickGateway"
-              required
-            />
-            <p className="text-xs text-gray-600 mt-1">
-              Falls back to the merchant token if left empty. Requests without a valid signature are rejected.
-            </p>
-          </div>
-          <button type="submit" disabled={savingWebhook} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-medium py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-purple-600/20 text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5">
-            {savingWebhook ? 'Saving...' : <><Save className="w-4 h-4" /> Save Webhook Secret</>}
-          </button>
-        </form>
       </div>
     </div>
   );
