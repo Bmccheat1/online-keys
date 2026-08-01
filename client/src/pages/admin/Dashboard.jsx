@@ -67,28 +67,28 @@ export default function Dashboard() {
 
       {/* Mini stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="panel">
+        <div className="panel !p-3 md:!p-4">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <CalendarDays className="w-3.5 h-3.5" />
             <span className="text-xs">Monthly Revenue</span>
           </div>
           <p className="text-base md:text-lg font-bold text-white">₹{monthRevenueDisplay}</p>
         </div>
-        <div className="panel">
+        <div className="panel !p-3 md:!p-4">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <ShoppingCart className="w-3.5 h-3.5" />
             <span className="text-xs">Today Orders</span>
           </div>
           <p className="text-base md:text-lg font-bold text-white">{summary?.todayOrders || 0}</p>
         </div>
-        <div className="panel">
+        <div className="panel !p-3 md:!p-4">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <KeyRound className="w-3.5 h-3.5" />
             <span className="text-xs">Total Keys</span>
           </div>
           <p className="text-base md:text-lg font-bold text-white">{summary?.totalKeys || 0}</p>
         </div>
-        <div className="panel">
+        <div className="panel !p-3 md:!p-4">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <TrendingUp className="w-3.5 h-3.5" />
             <span className="text-xs">Available Keys</span>

@@ -78,7 +78,7 @@ export default function AddMod() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Mod Details */}
-        <div className="panel space-y-4">
+        <div className="panel !p-4 md:!p-6 space-y-4">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-gold flex-shrink-0">
               <Package className="w-4 h-4 text-[#0a0a14]" />
@@ -96,7 +96,7 @@ export default function AddMod() {
         </div>
 
         {/* Durations */}
-        <div className="panel">
+        <div className="panel !p-4 md:!p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-white text-base font-display">Durations & Pricing</h3>
             <button type="button" onClick={addDuration} className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 font-medium bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-1 border border-amber-500/20">
