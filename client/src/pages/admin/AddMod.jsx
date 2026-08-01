@@ -59,7 +59,12 @@ export default function AddMod() {
     try {
       const fd = new FormData();
       fd.append('image', file);
-      const res = await api.post('/upload', fd);
+      // CRITICAL: default header is application/json — axios would JSON-ify the
+      // FormData instead of sending multipart. undefined lets the browser set
+      // multipart/form-data with the boundary automatically.
+      const res = await api.post('/upload', fd, {
+        headers: { 'Content-Type': undefined },
+      });
       if (res.data?.success) {
         setForm((f) => ({ ...f, image: res.data.url }));
         toast.success('Image uploaded!');
