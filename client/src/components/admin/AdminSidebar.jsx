@@ -1,9 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { memo, useState, useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Package, KeyRound, ClipboardList, Settings,
-  LogOut, Menu, X, BarChart3, Tag, ShieldCheck
+  LogOut, X, BarChart3, Tag, ShieldCheck
 } from 'lucide-react';
 
 const links = [
@@ -16,17 +16,16 @@ const links = [
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
-const AdminSidebar = memo(function AdminSidebar() {
+const AdminSidebar = memo(function AdminSidebar({ open, onToggle }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
 
-  // Close sidebar on route change (mobile)
+  // Close sidebar on browser back/forward (mobile)
   useEffect(() => {
-    const handleRoute = () => setOpen(false);
+    const handleRoute = () => onToggle?.(false);
     window.addEventListener('popstate', handleRoute);
     return () => window.removeEventListener('popstate', handleRoute);
-  }, []);
+  }, [onToggle]);
 
   const handleLogout = () => {
     logout();
@@ -44,12 +43,20 @@ const AdminSidebar = memo(function AdminSidebar() {
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 flex items-center justify-center shadow-gold flex-shrink-0">
           <ShieldCheck className="w-5 h-5 text-[#0a0a14]" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 font-display leading-tight">
             Admin Panel
           </h2>
           <p className="text-[10px] text-gray-600 truncate">Online Keys · Dashboard</p>
         </div>
+        {/* Close button — inside the drawer, never overlapping options (mobile only) */}
+        <button
+          onClick={() => onToggle?.(false)}
+          className="lg:hidden p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#1a1a28] transition-colors flex-shrink-0"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -62,7 +69,7 @@ const AdminSidebar = memo(function AdminSidebar() {
               key={link.to}
               to={link.to}
               end={link.to === '/admin/dashboard'}
-              onClick={() => setOpen(false)}
+              onClick={() => onToggle?.(false)}
               className={({ isActive }) =>
                 `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 overflow-hidden ${
                   isActive
@@ -111,20 +118,11 @@ const AdminSidebar = memo(function AdminSidebar() {
 
   return (
     <>
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="fixed top-3 left-3 z-[60] lg:hidden bg-[#0d0d1a]/90 backdrop-blur-xl border border-[#1e1e2e]/80 rounded-xl p-2.5 shadow-xl"
-        aria-label="Toggle menu"
-      >
-        {open ? <X className="w-5 h-5 text-amber-400" /> : <Menu className="w-5 h-5 text-amber-400" />}
-      </button>
-
-      {/* Overlay (mobile) */}
+      {/* Overlay (mobile) — above header bar, below drawer */}
       {open && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setOpen(false)}
+          onClick={() => onToggle?.(false)}
         />
       )}
 
