@@ -44,6 +44,7 @@ export default function EmbeddedCheckout({
   const [redirecting, setRedirecting] = useState(false);
   const sheetRef = useRef(null);
   const redirectTimerRef = useRef(null);
+  const successFiredRef = useRef(false); // fire onSuccess exactly once per session
 
   // ─── Open/Close animation ──────────────────────────────────
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function EmbeddedCheckout({
       requestAnimationFrame(() => requestAnimationFrame(() => setAnimateIn(true)));
       setStatus('loading');
       setPayment(null);
+      successFiredRef.current = false; // fresh session → allow onSuccess again
       setTimeLeft(1800);
       setQrCycleLeft(300);
       setQrExpired(false);
@@ -95,13 +97,22 @@ export default function EmbeddedCheckout({
         }, 3000);
       }
     }, 1200);
-    onSuccess?.({
-      paymentId: payment?.paymentId || '',
-      trxId: payment?.trxId || '',
-      amount: payment?.amount || 0,
-    });
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current); };
-  }, [status, redirectUrl, payment, onSuccess]);
+  }, [status, redirectUrl]);
+
+  // ─── Fire onSuccess EXACTLY once per session (delivers the key) ───
+  // (Separate from the animation effect so identity changes / re-renders
+  //  can never double-call the backend.)
+  useEffect(() => {
+    if (status === 'success' && !successFiredRef.current) {
+      successFiredRef.current = true;
+      onSuccess?.({
+        paymentId: payment?.paymentId || '',
+        trxId: payment?.trxId || '',
+        amount: payment?.amount || 0,
+      });
+    }
+  }, [status, payment, onSuccess]);
 
   useEffect(() => {
     return () => { if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current); };
@@ -226,6 +237,25 @@ export default function EmbeddedCheckout({
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget && status !== 'success') onClose();
+  };
+
+  // ─── "Already paid? Check status" — manual recovery when polling missed it ───
+  const handleManualCheck = async () => {
+    if (!payment?.trxId) { toast.error('No transaction to check'); return; }
+    try {
+      const res = await quickGatewayAPI.verifyPayment(payment.trxId);
+      const text = typeof res.data === 'string' ? res.data : res.data?.status;
+      if (text === 'SUCCESS' || text === 'ALREADY') {
+        setStatus('success'); // → success effect delivers the key via onSuccess
+      } else if (text === 'FAILURE') {
+        toast.error('Payment failed — please retry');
+        setStatus('failed');
+      } else {
+        toast('Payment still pending — wait a few seconds and try again');
+      }
+    } catch {
+      toast.error('Could not check status right now — try again in a moment');
+    }
   };
 
   if (!renderSheet) return null;
@@ -383,7 +413,13 @@ export default function EmbeddedCheckout({
                     ) : redirecting ? (
                       <div className="flex items-center justify-center gap-2 text-xs text-gray-500"><Spinner size="xs" /><span>Redirecting...</span></div>
                     ) : (
-                      <button onClick={onClose} className="text-xs text-gray-500 hover:text-white transition-colors underline underline-offset-2">Close</button>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                          <Spinner size="xs" />
+                          <span>Opening your key...</span>
+                        </div>
+                        <button onClick={onClose} className="text-[10px] text-gray-600 hover:text-gray-300 transition-colors mt-0.5 underline underline-offset-2">Close</button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -502,6 +538,13 @@ export default function EmbeddedCheckout({
                         <Spinner size="xs" />
                         <span className="text-[11px] font-medium text-gray-400">Waiting for payment...</span>
                       </div>
+                      {/* Recovery: polling missed the payment (network hiccup etc.) */}
+                      <button
+                        onClick={handleManualCheck}
+                        className="text-[11px] font-semibold text-amber-400/90 hover:text-amber-300 transition-colors underline underline-offset-2"
+                      >
+                        Already paid? Check status
+                      </button>
                       <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-widest text-gray-700">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                         <span>Secured by QuickGateway</span>

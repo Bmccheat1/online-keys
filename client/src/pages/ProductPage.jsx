@@ -259,7 +259,10 @@ export default function ProductPage() {
 
   const handleComplete = async ({ paymentId }) => {
     const res = await orderAPI.complete({
-      orderId: paymentId,
+      // ⚠️ MUST be `paymentId` — the server validates this exact field.
+      // (Previously sent as `orderId` → server rejected with "Payment ID is
+      //  required" → key never delivered, no redirect. That's the bug we fixed.)
+      paymentId,
       productId: product._id,
       durationValue: selectedDuration.value,
       durationUnit: selectedDuration.unit,

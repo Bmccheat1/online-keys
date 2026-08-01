@@ -145,9 +145,12 @@ const initiateOrder = async (req, res, next) => {
     }
 
     // 6b. Save payment + coupon + customer info on key (needed for webhook lookup later)
+    //     reservedAmount LOCKS the final price at initiate time — flash sales ending
+    //     or price changes mid-payment must not break the order at completion.
     await Key.findByIdAndUpdate(reservedKey._id, {
       $set: {
         paymentId: gwOrder.paymentId,
+        reservedAmount: gatewayAmount,
         couponCode: couponResult.couponCode,
         couponId: couponResult.couponId,
         discountAmount: couponResult.discountAmount,
@@ -322,11 +325,11 @@ const completeOrder = async (req, res, next) => {
       (d) => d.value === durationValue && d.unit === durationUnit
     );
 
-    // Check flash sale (startAt + endAt) + coupon — amounts were locked at initiate time
-    const flashActive = isFlashActive(duration);
-    const baseAmount = flashActive ? duration.flashSale.flashPrice : duration.price;
-    const discountAmount = key.discountAmount || 0;
-    const paidAmount = Math.max(0, baseAmount - discountAmount);
+    // 💰 Amount was LOCKED at initiate time (flash/coupon changes mid-payment
+    //    must NOT change what we charge) — prefer the key's reserved amount.
+    const paidAmount = key.reservedAmount != null
+      ? key.reservedAmount
+      : Math.max(0, (isFlashActive(duration) ? duration.flashSale.flashPrice : duration.price) - (key.discountAmount || 0));
 
     // 💰 Amount verification: customer must have paid exactly what we charged
     // (prevents under-payment attacks where the gateway order was manipulated)

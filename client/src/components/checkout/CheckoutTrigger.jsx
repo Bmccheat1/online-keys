@@ -20,7 +20,7 @@
  *   />
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import EmbeddedCheckout from './EmbeddedCheckout';
 import { Spinner } from './Loading';
 import toast from 'react-hot-toast';
@@ -38,6 +38,10 @@ export default function CheckoutTrigger({
   const [paymentId, setPaymentId] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const reservationRef = useRef(null);
+  const successTimerRef = useRef(null);
+
+  // Close the sheet + clear timers when the trigger unmounts
+  useEffect(() => () => { if (successTimerRef.current) clearTimeout(successTimerRef.current); }, []);
 
   const handlePay = useCallback(async () => {
     if (loading || disabled) return;
@@ -66,6 +70,13 @@ export default function CheckoutTrigger({
       // 2. Call onComplete — backend delivers key
       const result = await onComplete(paymentInfo);
       reservationRef.current = null; // key delivered — no need to release
+      // 3. Let the success animation play ~2s, then auto-close the sheet so
+      //    the user lands on the Key Delivered screen (no manual close needed)
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => {
+        setSheetOpen(false);
+        setPaymentId(null);
+      }, 2000);
       return result;
     } catch (err) {
       const msg = err.response?.data?.message || 'Order completion failed — contact support';
