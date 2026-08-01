@@ -253,7 +253,7 @@ export default function EmbeddedCheckout({
       >
         <div
           ref={sheetRef}
-          className="relative w-full max-w-md mx-2 bg-[#0a0a14] border border-[#1e1e2e]/80 rounded-t-2xl shadow-2xl pointer-events-auto overflow-hidden transition-all duration-300"
+          className="relative w-full max-w-md mx-2 bg-[#0a0a14]/95 backdrop-blur-xl border border-[#1e1e2e]/80 rounded-t-2xl shadow-2xl pointer-events-auto overflow-hidden transition-all duration-300"
           style={{
             maxHeight: '85vh',
             transform: animateIn ? 'translateY(0)' : 'translateY(100%)',
@@ -261,6 +261,8 @@ export default function EmbeddedCheckout({
             transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         >
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-600/0 via-amber-500/60 to-amber-600/0" />
           {/* Handle Bar */}
           <div className="flex justify-center pt-2 pb-0.5">
             <div className="w-8 h-1 rounded-full bg-[#2a2a3e]" />
@@ -413,7 +415,7 @@ export default function EmbeddedCheckout({
                       else if (p.status === -1) setStatus('failed');
                       else setStatus('pending');
                     }).catch(() => setStatus('failed'));
-                }} className="w-full py-2.5 px-5 rounded-xl font-semibold text-xs bg-[#1a1a28] hover:bg-[#2a2a3e] text-white border border-[#1e1e2e] transition-all active:scale-[0.98]">
+                }} className="w-full py-2.5 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-gold transition-all active:scale-[0.98]">
                   Retry Payment
                 </button>
               </div>
@@ -424,12 +426,12 @@ export default function EmbeddedCheckout({
               <div className="flex flex-col items-center gap-3 animate-fade-in">
                 {/* Header */}
                 <div className="w-full flex items-center gap-2 pb-1">
-                  <div className="w-8 h-8 rounded-lg bg-[#1a1a28] border border-[#1e1e2e] flex items-center justify-center font-bold text-white text-xs shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 border border-amber-500/30 flex items-center justify-center font-bold text-[#0a0a14] text-xs shrink-0 shadow-gold-sm">
                     {payment?.merchantName?.charAt(0)?.toUpperCase() || 'M'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-xs text-white truncate">{payment?.merchantName || 'Merchant'}</h4>
-                    <span className="text-[10px] font-bold tracking-wider uppercase text-blue-400 flex items-center gap-1">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-400 flex items-center gap-1">
                       <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7 3.1 5.52l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82 1.89 3.2L12 21.04l3.4 1.46 1.89-3.2 3.61-.82-.34-3.7L23 12z" /></svg>
                       Verified
                     </span>

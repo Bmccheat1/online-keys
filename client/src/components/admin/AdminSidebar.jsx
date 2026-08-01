@@ -3,7 +3,7 @@ import { memo, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Package, KeyRound, ClipboardList, Settings,
-  LogOut, Menu, X, BarChart3, Tag, TrendingUp
+  LogOut, Menu, X, BarChart3, Tag, ShieldCheck
 } from 'lucide-react';
 
 const links = [
@@ -33,17 +33,28 @@ const AdminSidebar = memo(function AdminSidebar() {
     navigate('/');
   };
 
+  const initials = (user?.name || user?.email || 'A')
+    .split(/[\s@.]+/).filter(Boolean).slice(0, 2)
+    .map(s => s[0].toUpperCase()).join('');
+
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="px-4 py-5 border-b border-[#1e1e2e]/60">
-        <h2 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400">
-          Admin Panel
-        </h2>
+      <div className="px-4 py-5 border-b border-[#1e1e2e]/60 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 flex items-center justify-center shadow-gold flex-shrink-0">
+          <ShieldCheck className="w-5 h-5 text-[#0a0a14]" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 font-display leading-tight">
+            Admin Panel
+          </h2>
+          <p className="text-[10px] text-gray-600 truncate">Online Keys · Dashboard</p>
+        </div>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <p className="px-3 pb-2 text-[9px] uppercase tracking-[0.15em] text-gray-700 font-semibold">Menu</p>
         {links.map((link) => {
           const Icon = link.icon;
           return (
@@ -53,30 +64,43 @@ const AdminSidebar = memo(function AdminSidebar() {
               end={link.to === '/admin/dashboard'}
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 overflow-hidden ${
                   isActive
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/5'
+                    ? 'bg-gradient-to-r from-amber-500/15 to-amber-500/5 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/10'
                     : 'text-gray-400 hover:bg-[#0a0a14]/60 hover:text-gray-200 border border-transparent'
                 }`
               }
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              <span>{link.label}</span>
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-gradient-to-b from-amber-400 to-orange-500" />
+                  )}
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-amber-400' : ''}`} />
+                  <span>{link.label}</span>
+                </>
+              )}
             </NavLink>
           );
         })}
       </nav>
 
       {/* User & Logout */}
-      <div className="px-3 py-4 border-t border-[#1e1e2e]/60">
+      <div className="px-3 py-4 border-t border-[#1e1e2e]/60 space-y-2">
         {user && (
-          <div className="px-3 pb-2 mb-2">
-            <p className="text-xs text-gray-500 truncate">{user.name || user.email}</p>
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-[#0a0a14]/50 border border-[#1e1e2e]/50">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/30 to-orange-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-bold text-amber-400">{initials}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-300 truncate">{user.name || user.email}</p>
+              <p className="text-[9px] text-gray-600 uppercase tracking-wider">Administrator</p>
+            </div>
           </div>
         )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-transparent hover:border-red-500/20 transition-all duration-200"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[13px] font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-transparent hover:border-red-500/20 transition-all duration-200"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           <span>Logout</span>

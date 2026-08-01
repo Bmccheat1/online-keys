@@ -1,9 +1,23 @@
-const { Order, Key, Product, Setting } = require('../models');
+const { Order, Key, Product, Setting, Coupon } = require('../models');
 const { createPaymentOrder, verifyPayment, getPaymentDetails, getGatewayConfig } = require('../utils/quickGateway');
+const { applyCoupon } = require('../utils/coupon');
 
 // ─── Configuration ──────────────────────────────────────────
 const RESERVATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_RETRY_ATTEMPTS = 3;
+
+/**
+ * Flash sale check — respects BOTH startAt and endAt window.
+ * A flash sale is active only if: enabled, has a flash price,
+ * startAt (if set) has passed, and endAt (if set) is in the future.
+ */
+function isFlashActive(duration) {
+  if (!duration?.flashSale?.isActive || duration.flashSale?.flashPrice == null) return false;
+  const now = new Date();
+  if (duration.flashSale.endAt && new Date(duration.flashSale.endAt) <= now) return false;
+  if (duration.flashSale.startAt && new Date(duration.flashSale.startAt) > now) return false;
+  return true;
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -40,7 +54,7 @@ async function cleanupExpiredReservations() {
 // @route   POST /api/orders/initiate
 const initiateOrder = async (req, res, next) => {
   try {
-    const { productId, durationValue, durationUnit, customerEmail = '' } = req.body;
+    const { productId, durationValue, durationUnit, customerEmail = '', customerMobile = '9999999999', couponCode = '' } = req.body;
 
     // 1. Clean up any expired reservations first
     await cleanupExpiredReservations();
@@ -96,18 +110,30 @@ const initiateOrder = async (req, res, next) => {
       throw new Error('Payment gateway is not configured. Admin must set Merchant Token in Settings page.');
     }
 
-    // 5. 🔥 Check Flash Sale — use flash price if active
-    const isFlashActive = duration.flashSale?.isActive && 
-      duration.flashSale?.flashPrice != null && 
-      duration.flashSale?.endAt && 
-      new Date(duration.flashSale.endAt) > new Date();
-    const payableAmount = isFlashActive ? duration.flashSale.flashPrice : duration.price;
+    // 5. 🔥 Check Flash Sale — use flash price if active (startAt + endAt window)
+    const flashActive = isFlashActive(duration);
+    const payableAmount = flashActive ? duration.flashSale.flashPrice : duration.price;
+
+    // 5b. 🎟️ Apply coupon server-side — the discount is REAL, not just visual.
+    //     The gateway order below is created for the FINAL (discounted) amount.
+    let couponResult;
+    try {
+      couponResult = await applyCoupon({ code: couponCode, amount: payableAmount, productId });
+    } catch (couponError) {
+      // Release the key if coupon is invalid
+      await Key.findByIdAndUpdate(reservedKey._id, {
+        $set: { status: 'available', reservedAt: null, reservationExpiresAt: null },
+      });
+      res.status(400);
+      throw couponError;
+    }
+    const gatewayAmount = couponResult.finalAmount;
 
     // 6. ✅ Create QuickGateway order server-side
     const gwOrder = await createPaymentOrder(
-      payableAmount,
+      gatewayAmount,
       gatewayConfig.merchantToken,
-      '9999999999'
+      String(customerMobile || '9999999999')
     );
 
     if (!gwOrder.success) {
@@ -118,9 +144,15 @@ const initiateOrder = async (req, res, next) => {
       throw new Error('Payment gateway order failed: ' + (gwOrder.message || 'Unknown error'));
     }
 
-    // 6b. Save paymentId on key (needed for webhook lookup later)
+    // 6b. Save payment + coupon + customer info on key (needed for webhook lookup later)
     await Key.findByIdAndUpdate(reservedKey._id, {
-      $set: { paymentId: gwOrder.paymentId },
+      $set: {
+        paymentId: gwOrder.paymentId,
+        couponCode: couponResult.couponCode,
+        couponId: couponResult.couponId,
+        discountAmount: couponResult.discountAmount,
+        customerEmail: customerEmail || req.user?.email || '',
+      },
     });
 
     // 7. Try to get full payment details (for embedded QR + polling without SDK)
@@ -138,9 +170,12 @@ const initiateOrder = async (req, res, next) => {
         productId: product._id,
         productTitle: product.title,
         duration: duration.label,
-        amount: payableAmount,
+        amount: gatewayAmount,            // Final amount charged (after coupon)
+        subtotal: payableAmount,          // Amount before coupon
+        discountAmount: couponResult.discountAmount,
+        couponCode: couponResult.couponCode,
         originalPrice: duration.price,
-        isFlashSale: isFlashActive,
+        isFlashSale: flashActive,
         durationValue: duration.value,
         durationUnit: duration.unit,
         customerEmail: customerEmail || req.user?.email || '',
@@ -287,12 +322,25 @@ const completeOrder = async (req, res, next) => {
       (d) => d.value === durationValue && d.unit === durationUnit
     );
 
-    // Check flash sale
-    const isFlashActive = duration.flashSale?.isActive && 
-      duration.flashSale?.flashPrice != null && 
-      duration.flashSale?.endAt && 
-      new Date(duration.flashSale.endAt) > new Date();
-    const paidAmount = isFlashActive ? duration.flashSale.flashPrice : duration.price;
+    // Check flash sale (startAt + endAt) + coupon — amounts were locked at initiate time
+    const flashActive = isFlashActive(duration);
+    const baseAmount = flashActive ? duration.flashSale.flashPrice : duration.price;
+    const discountAmount = key.discountAmount || 0;
+    const paidAmount = Math.max(0, baseAmount - discountAmount);
+
+    // 💰 Amount verification: customer must have paid exactly what we charged
+    // (prevents under-payment attacks where the gateway order was manipulated)
+    if (verification.data && verification.data.amount != null) {
+      const gatewayAmount = Number(verification.data.amount);
+      if (Math.abs(gatewayAmount - paidAmount) > 0.5) {
+        // Restore the key so the customer can retry
+        await Key.findByIdAndUpdate(key._id, {
+          $set: { status: 'available', soldAt: null },
+        });
+        res.status(402);
+        throw new Error('Payment amount mismatch — please contact support');
+      }
+    }
 
     const order = await Order.create({
       userId: req.user?._id || null,
@@ -309,6 +357,8 @@ const completeOrder = async (req, res, next) => {
         },
       }],
       totalAmount: paidAmount,
+      discountAmount: discountAmount,
+      couponCode: key.couponCode || '',
       paymentId: paymentId,
       paymentStatus: 'completed',
       orderStatus: 'completed',
@@ -323,6 +373,11 @@ const completeOrder = async (req, res, next) => {
       $inc: { soldKeys: 1 },
     });
 
+    // 7b. Increment coupon usage (once per order)
+    if (key.couponId) {
+      await Coupon.findByIdAndUpdate(key.couponId, { $inc: { usedCount: 1 } });
+    }
+
     // 8. 🎉 Return key & full transaction details to customer
     res.status(201).json({
       success: true,
@@ -333,6 +388,8 @@ const completeOrder = async (req, res, next) => {
         product: product.title,
         duration: duration.label,
         amount: paidAmount,
+        discountAmount: discountAmount,
+        couponCode: key.couponCode || '',
         paymentId: paymentId,
         transactionId: verification.data?.transactionId || paymentId,
         purchasedAt: order.createdAt || new Date().toISOString(),

@@ -57,14 +57,14 @@ export default function AvailableKeys() {
   if (loading) return <Loader />;
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
           <BarChart3 className="w-4 h-4 text-white" />
         </div>
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white">Available Keys</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Overview of all key inventory across mods and durations</p>
+        <div className="page-header !mb-0">
+          <h1 className="page-title">Available Keys</h1>
+          <p className="page-sub">Overview of all key inventory across mods and durations</p>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export default function AvailableKeys() {
       )}
 
       {mods.length === 0 ? (
-        <div className="text-center py-16 text-gray-600 bg-[#0d0d1a]/50 rounded-xl border border-[#1e1e2e]/60">
+        <div className="text-center py-16 text-gray-600 panel border-dashed p-8">
           <Package className="w-12 h-12 mx-auto mb-3 text-gray-700" />
           <p className="text-base font-medium text-gray-500">No mods found</p>
           <Link to="/admin/mods/add" className="text-amber-400 hover:text-amber-300 text-sm mt-2 inline-block">Create your first mod →</Link>
@@ -107,7 +107,7 @@ export default function AvailableKeys() {
               .reduce((sum, s) => sum + (s.statuses.find(st => st.status === 'available')?.count || 0), 0);
 
             return (
-              <div key={mod._id} className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl overflow-hidden transition-all duration-200">
+              <div key={mod._id} className="panel overflow-hidden !p-0 transition-all duration-200">
                 {/* Mod Header — Click to expand */}
                 <button
                   onClick={() => setExpandedMod(isExpanded ? null : mod._id)}

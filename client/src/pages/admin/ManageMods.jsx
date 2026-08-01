@@ -21,11 +21,14 @@ export default function ManageMods() {
   if (loading) return <Loader />;
 
   return (
-    <div>
+    <div className="animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-white">Mods</h1>
-        <Link to="/admin/mods/add" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 shadow-lg shadow-amber-600/20 text-sm">
+        <div className="page-header !mb-0">
+          <h1 className="page-title">Mods</h1>
+          <p className="page-sub">Manage your mod catalog & durations</p>
+        </div>
+        <Link to="/admin/mods/add" className="btn-gold !py-2.5 !px-5 inline-flex items-center gap-2 text-sm shrink-0">
           <Plus className="w-4 h-4" /> Add Mod
         </Link>
       </div>
@@ -35,45 +38,46 @@ export default function ManageMods() {
         {mods.map((mod) => (
           <div
             key={mod._id}
-            className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-5 hover:border-amber-500/20 transition-all duration-200"
+            className="panel panel-hover flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:p-5"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                  <Package className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-white truncate">{mod.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    {mod.durations?.length || 0} duration{(mod.durations?.length || 0) !== 1 ? 's' : ''}
-                    {mod.durations?.length > 0 && (
-                      <> · Starting ₹{Math.min(...mod.durations.map(d => d.price)).toLocaleString()}</>
-                    )}
-                  </p>
-                </div>
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-gold flex-shrink-0">
+                <Package className="w-5 h-5 text-[#0a0a14]" />
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Link
-                  to={`/admin/mods/${mod._id}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-all"
-                >
-                  <Edit3 className="w-3.5 h-3.5" /> Edit
-                </Link>
-                <button
-                  onClick={() => handleDelete(mod._id)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
-                </button>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-white truncate font-display">{mod.title}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  <span className="chip chip-amber !text-[9px] mr-1.5">{mod.durations?.length || 0} duration{(mod.durations?.length || 0) !== 1 ? 's' : ''}</span>
+                  {mod.durations?.length > 0 && (
+                    <>Starting <span className="text-amber-400 font-semibold">₹{Math.min(...mod.durations.map(d => d.price)).toLocaleString()}</span></>
+                  )}
+                </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                to={`/admin/mods/${mod._id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-all border border-amber-500/20"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Edit
+              </Link>
+              <button
+                onClick={() => handleDelete(mod._id)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-all border border-red-500/20"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
             </div>
           </div>
         ))}
         {mods.length === 0 && (
-          <div className="text-center py-16 text-gray-600">
+          <div className="text-center py-16 panel border-dashed">
             <Package className="w-12 h-12 mx-auto mb-3 text-gray-700" />
             <p className="text-lg font-medium text-gray-500">No mods yet</p>
             <p className="text-sm text-gray-700 mt-1">Create your first mod to start selling</p>
+            <Link to="/admin/mods/add" className="btn-gold inline-flex items-center gap-2 mt-4 !py-2 !px-4 text-xs">
+              <Plus className="w-3.5 h-3.5" /> Add Mod
+            </Link>
           </div>
         )}
       </div>

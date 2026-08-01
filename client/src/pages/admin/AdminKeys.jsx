@@ -127,8 +127,11 @@ export default function AdminKeys() {
   if (loading) return <Loader />;
 
   return (
-    <div>
-      <h1 className="text-xl md:text-2xl font-bold mb-6 text-white">License Keys</h1>
+    <div className="animate-fade-in">
+      <div className="page-header">
+        <h1 className="page-title">License Keys</h1>
+        <p className="page-sub">Add & manage license keys per mod and duration</p>
+      </div>
 
       {/* ─── Overview: All Mods × Durations ─── */}
       {showOverview && (
@@ -140,7 +143,7 @@ export default function AdminKeys() {
 
           <div className="grid gap-3">
             {mods.length === 0 && (
-              <div className="text-center py-10 text-gray-600 bg-[#0d0d1a]/50 rounded-xl border border-[#1e1e2e]/60">
+              <div className="text-center py-10 text-gray-600 panel border-dashed">
                 <KeyRound className="w-10 h-10 mx-auto mb-2 text-gray-700" />
                 <p className="text-sm text-gray-500">No mods created yet</p>
               </div>
@@ -150,7 +153,7 @@ export default function AdminKeys() {
               // Only show mods that have at least some keys
               const modHasKeys = stats.some(s => String(s._id.productId) === String(mod._id));
               return (
-                <div key={mod._id} className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl overflow-hidden">
+                <div key={mod._id} className="panel overflow-hidden !p-0">
                   {/* Mod Header */}
                   <div className="px-4 py-3 bg-[#0a0a14]/60 border-b border-[#1e1e2e]/40 flex items-center gap-3">
                     <KeyRound className="w-4 h-4 text-amber-400/70 flex-shrink-0" />
@@ -219,13 +222,13 @@ export default function AdminKeys() {
       )}
 
       {/* ─── Add Keys Section ─── */}
-      <div className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-5 mb-4">
+      <div className="panel mb-4">
         <label className="block text-sm font-medium text-gray-300 mb-3">Add License Key</label>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Select Mod</label>
             <div className="relative">
-              <select value={selectedModId} onChange={(e) => handleModChange(e.target.value)} className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all">
+              <select value={selectedModId} onChange={(e) => handleModChange(e.target.value)} className="select-field w-full">
                 <option value="">— Select Mod —</option>
                 {mods.map((mod) => (
                   <option key={mod._id} value={mod._id}>{mod.title}</option>
@@ -237,7 +240,7 @@ export default function AdminKeys() {
           <div>
             <label className="block text-xs text-gray-500 mb-1">Select Duration</label>
             <div className="relative">
-              <select value={selectedDuration} onChange={(e) => handleDurationChange(e.target.value)} className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all disabled:opacity-50" disabled={!selectedModId}>
+              <select value={selectedDuration} onChange={(e) => handleDurationChange(e.target.value)} className="select-field w-full disabled:opacity-50" disabled={!selectedModId}>
                 <option value="">— Select Duration —</option>
                 {durations.map((dur, i) => (
                   <option key={i} value={dur.label}>{dur.label} — ₹{dur.price.toLocaleString()}</option>
@@ -249,7 +252,7 @@ export default function AdminKeys() {
           <div>
             <label className="block text-xs text-gray-500 mb-1">Entry Type</label>
             <div className="relative">
-              <select value={entryType} onChange={(e) => setEntryType(e.target.value)} className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all">
+              <select value={entryType} onChange={(e) => setEntryType(e.target.value)} className="select-field w-full">
                 <option value="single">Single Key Entry</option>
                 <option value="bulk">Bulk Key Entry</option>
               </select>
@@ -261,8 +264,8 @@ export default function AdminKeys() {
 
       {/* ─── Key Entry ─── */}
       {selectedModId && selectedDuration && (
-        <div className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-5 mb-6">
-          <h3 className="font-semibold text-white mb-3 text-sm md:text-base">
+        <div className="panel mb-6">
+          <h3 className="font-semibold text-white mb-3 text-sm md:text-base font-display">
             {entryType === 'single' ? 'Enter License Key' : 'Bulk Add License Keys'}
           </h3>
 
@@ -272,10 +275,10 @@ export default function AdminKeys() {
                 type="text"
                 value={singleKey}
                 onChange={(e) => setSingleKey(e.target.value)}
-                className="flex-1 bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all"
+                className="flex-1 input-field font-mono"
                 placeholder="e.g. ABCD-1234-EFGH-5678"
               />
-              <button onClick={handleAddKeys} disabled={adding || !singleKey.trim()} className="bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 shadow-lg shadow-amber-600/20 text-sm disabled:opacity-50 flex items-center justify-center gap-1.5">
+              <button onClick={handleAddKeys} disabled={adding || !singleKey.trim()} className="btn-gold !py-2.5 !px-5 text-sm disabled:opacity-50 flex items-center justify-center gap-1.5">
                 {adding ? 'Adding...' : <><Plus className="w-4 h-4" /> Add Key</>}
               </button>
             </div>
@@ -285,7 +288,7 @@ export default function AdminKeys() {
               <textarea
                 value={bulkKeys}
                 onChange={(e) => setBulkKeys(e.target.value)}
-                className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all"
+                className="w-full input-field font-mono"
                 rows="6"
                 placeholder={"ABCD-1234-EFGH-5678\nIJKL-9012-MNOP-3456\nQRST-7890-UVWX-1234"}
               />
@@ -293,7 +296,7 @@ export default function AdminKeys() {
                 <span className="text-sm text-gray-500">
                   {bulkKeys.split('\n').filter((k) => k.trim()).length} keys detected
                 </span>
-                <button onClick={handleAddKeys} disabled={adding} className="bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 text-white font-medium py-2.5 px-5 rounded-xl transition-all duration-200 shadow-lg shadow-amber-600/20 text-sm disabled:opacity-50 flex items-center gap-1.5">
+                <button onClick={handleAddKeys} disabled={adding} className="btn-gold !py-2.5 !px-5 text-sm disabled:opacity-50 flex items-center gap-1.5">
                   {adding ? 'Adding...' : <><Plus className="w-4 h-4" /> Add {bulkKeys.split('\n').filter((k) => k.trim()).length || 0} Keys</>}
                 </button>
               </div>
@@ -304,9 +307,9 @@ export default function AdminKeys() {
 
       {/* ─── View Keys Table ─── */}
       {showKeys && selectedMod && (
-        <div className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl overflow-hidden">
+        <div className="panel overflow-hidden !p-0">
           <div className="p-4 md:p-5 border-b border-[#1e1e2e]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h3 className="font-semibold text-white text-sm md:text-base">
+            <h3 className="font-semibold text-white text-sm md:text-base font-display">
               {selectedMod.title} — {selectedDuration}
             </h3>
             <div className="flex flex-wrap gap-3 md:gap-4 text-xs md:text-sm">
@@ -319,7 +322,7 @@ export default function AdminKeys() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[500px]">
               <thead>
-                <tr className="border-b border-[#1e1e2e]/60">
+                <tr className="table-head">
                   <th className="text-left p-3 md:p-4 text-gray-500 text-xs md:text-sm font-medium">License Key</th>
                   <th className="text-left p-3 md:p-4 text-gray-500 text-xs md:text-sm font-medium">Status</th>
                   <th className="text-right p-3 md:p-4 text-gray-500 text-xs md:text-sm font-medium">Actions</th>
@@ -327,7 +330,7 @@ export default function AdminKeys() {
               </thead>
               <tbody>
                 {keys.map((key) => (
-                  <tr key={key._id} className="border-b border-[#1e1e2e]/30 hover:bg-[#0a0a14]/50 transition-colors">
+                  <tr key={key._id} className="table-row">
                     <td className="p-3 md:p-4 font-mono text-xs md:text-sm text-gray-200 break-all">{key.keyValue}</td>
                     <td className="p-3 md:p-4">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

@@ -48,6 +48,26 @@ const keySchema = new mongoose.Schema({
     default: null,
     index: true,
   },
+  // ─── Coupon + customer info locked at initiate time ───
+  // Stored on the key so the webhook path can build the order correctly
+  couponCode: {
+    type: String,
+    default: null,
+  },
+  couponId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coupon',
+    default: null,
+  },
+  discountAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Discount cannot be negative'],
+  },
+  customerEmail: {
+    type: String,
+    default: '',
+  },
 }, {
   timestamps: true,
 });

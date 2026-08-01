@@ -63,6 +63,16 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: 'INR',
   },
+  // ─── Coupon info applied to this order (server-verified) ───
+  couponCode: {
+    type: String,
+    default: '',
+  },
+  discountAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Discount cannot be negative'],
+  },
 }, {
   timestamps: true,
 });

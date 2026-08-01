@@ -10,7 +10,7 @@ import {
 function StatsCard({ icon: Icon, label, value, sub, color, link }) {
   const Wrapper = link ? Link : 'div';
   return (
-    <Wrapper to={link || '#'} className={`bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-5 hover:border-amber-500/30 transition-all duration-300 ${link ? 'cursor-pointer' : ''}`}>
+    <Wrapper to={link || '#'} className={`panel group transition-all duration-300 ${link ? 'cursor-pointer hover:border-amber-500/40 hover:shadow-gold-sm' : ''}`}>
       <div className="flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-xs md:text-sm text-gray-500">{label}</p>
@@ -51,8 +51,11 @@ export default function Dashboard() {
   const monthRevenueDisplay = summary?.monthRevenue?.toLocaleString() || '0';
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl md:text-2xl font-bold text-white">Dashboard</h1>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-sub">Overview of your store's performance</p>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -64,28 +67,28 @@ export default function Dashboard() {
 
       {/* Mini stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-[#0d0d1a]/60 border border-[#1e1e2e]/60 rounded-xl p-3 md:p-4">
+        <div className="panel">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <CalendarDays className="w-3.5 h-3.5" />
             <span className="text-xs">Monthly Revenue</span>
           </div>
           <p className="text-base md:text-lg font-bold text-white">₹{monthRevenueDisplay}</p>
         </div>
-        <div className="bg-[#0d0d1a]/60 border border-[#1e1e2e]/60 rounded-xl p-3 md:p-4">
+        <div className="panel">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <ShoppingCart className="w-3.5 h-3.5" />
             <span className="text-xs">Today Orders</span>
           </div>
           <p className="text-base md:text-lg font-bold text-white">{summary?.todayOrders || 0}</p>
         </div>
-        <div className="bg-[#0d0d1a]/60 border border-[#1e1e2e]/60 rounded-xl p-3 md:p-4">
+        <div className="panel">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <KeyRound className="w-3.5 h-3.5" />
             <span className="text-xs">Total Keys</span>
           </div>
           <p className="text-base md:text-lg font-bold text-white">{summary?.totalKeys || 0}</p>
         </div>
-        <div className="bg-[#0d0d1a]/60 border border-[#1e1e2e]/60 rounded-xl p-3 md:p-4">
+        <div className="panel">
           <div className="flex items-center gap-2 text-gray-500 mb-1">
             <TrendingUp className="w-3.5 h-3.5" />
             <span className="text-xs">Available Keys</span>
@@ -97,8 +100,8 @@ export default function Dashboard() {
       {/* Sales Chart + Top Mods */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Sales Chart */}
-        <div className="lg:col-span-2 bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Sales (Last 14 Days)</h3>
+        <div className="lg:col-span-2 panel">
+          <h3 className="section-title">Sales (Last 14 Days)</h3>
           {chartData.length === 0 ? (
             <div className="text-center py-8 text-gray-600 text-sm">No sales data yet</div>
           ) : (
@@ -131,8 +134,8 @@ export default function Dashboard() {
         </div>
 
         {/* Top Selling Mods */}
-        <div className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Top Selling Mods</h3>
+        <div className="panel">
+          <h3 className="section-title">Top Selling Mods</h3>
           {topMods.length === 0 ? (
             <div className="text-center py-8 text-gray-600 text-sm">No sales yet</div>
           ) : (

@@ -85,8 +85,6 @@ export const orderAPI = {
   initiate: (data) => api.post('/orders/initiate', data).then((r) => r.data),
   complete: (data) => api.post('/orders/complete', data).then((r) => r.data),
   release: (data) => api.post('/orders/release', data).then((r) => r.data),
-  // Legacy direct buy (no payment)
-  create: (data) => api.post('/orders/create', data).then((r) => r.data),
   getMyOrders: () => api.get('/orders/my').then((r) => r.data),
   getAll: (params) => api.get('/orders', { params }).then((r) => r.data),
 };

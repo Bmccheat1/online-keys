@@ -69,37 +69,37 @@ export default function AddMod() {
 
   return (
     <div className="max-w-full lg:max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/admin/mods')} className="text-gray-500 hover:text-amber-400 transition-colors p-1">
+      <div className="flex items-center gap-3 mb-6 animate-fade-in">
+        <button onClick={() => navigate('/admin/mods')} className="text-gray-500 hover:text-amber-400 transition-colors p-1.5 hover:bg-amber-500/10 rounded-lg">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-xl md:text-2xl font-bold text-white">{isEdit ? 'Edit Mod' : 'Add New Mod'}</h1>
+        <h1 className="page-title">{isEdit ? 'Edit Mod' : 'Add New Mod'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Mod Details */}
-        <div className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-6 space-y-4">
+        <div className="panel space-y-4">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <Package className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-gold flex-shrink-0">
+              <Package className="w-4 h-4 text-[#0a0a14]" />
             </div>
-            <h3 className="font-semibold text-white text-base">Mod Details</h3>
+            <h3 className="font-semibold text-white text-base font-display">Mod Details</h3>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Title *</label>
-            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all" placeholder="e.g. Windows 10 Pro" required />
+            <label className="field">Title *</label>
+            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="input-field" placeholder="e.g. Windows 10 Pro" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all" rows="3" placeholder="Mod description..." />
+            <label className="field">Description</label>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field" rows="3" placeholder="Mod description..." />
           </div>
         </div>
 
         {/* Durations */}
-        <div className="bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl p-4 md:p-6">
+        <div className="panel">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-white text-base">Durations & Pricing</h3>
-            <button type="button" onClick={addDuration} className="text-sm text-amber-400 hover:text-amber-300 font-medium bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-1">
+            <h3 className="font-semibold text-white text-base font-display">Durations & Pricing</h3>
+            <button type="button" onClick={addDuration} className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 font-medium bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-all inline-flex items-center gap-1 border border-amber-500/20">
               <Plus className="w-3.5 h-3.5" /> Add Duration
             </button>
           </div>
@@ -185,10 +185,10 @@ export default function AddMod() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <button type="submit" disabled={saving} className="bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 text-white font-medium py-2.5 px-8 rounded-xl transition-all duration-200 shadow-lg shadow-amber-600/20 text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2">
+          <button type="submit" disabled={saving} className="btn-gold !py-2.5 !px-8 text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2">
             {saving ? 'Saving...' : isEdit ? 'Update Mod' : 'Create Mod'}
           </button>
-          <button type="button" onClick={() => navigate('/admin/mods')} className="text-gray-400 hover:text-white font-medium py-2.5 px-6 rounded-xl border border-[#1e1e2e] hover:border-gray-600 transition-all text-sm">
+          <button type="button" onClick={() => navigate('/admin/mods')} className="btn-secondary !py-2.5 !px-6 text-sm">
             Cancel
           </button>
         </div>

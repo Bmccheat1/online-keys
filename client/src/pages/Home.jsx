@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { productAPI, orderAPI, couponAPI } from '../api';
 import { quickGatewayAPI } from '../utils/quickgateway';
 import CheckoutTrigger from '../components/checkout/CheckoutTrigger';
-import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, Clock, Percent, Sparkles } from 'lucide-react';
+import { ShieldCheck, Zap, KeyRound, ArrowRight, Copy, Check, ChevronDown, Tag, Clock, Percent, Sparkles, BadgeCheck } from 'lucide-react';
 
 function Bg() {
   return (
@@ -81,20 +81,27 @@ function SuccessView({ purchasedKey, mod, onReset }) {
   const payMethod = paymentMeta?.method || null;
 
   return (
-    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto px-3 sm:px-4 py-4 sm:py-6">
-      <div className="bg-[#0d0d1a]/90 backdrop-blur-xl border border-[#1e1e2e]/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 shadow-2xl shadow-black/50">
-        <div className="mx-auto w-12 sm:w-14 h-12 sm:h-14 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-xl shadow-emerald-500/30">
-          <Zap className="w-6 sm:w-7 h-6 sm:h-7 text-white" />
+    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto px-3 sm:px-4 py-4 sm:py-6 animate-fade-up">
+      <div className="card-glass p-4 sm:p-5 md:p-6 relative overflow-hidden">
+        {/* Success glow */}
+        <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-20 animate-success-glow" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.5) 0%, transparent 70%)' }} />
+
+        <div className="mx-auto w-12 sm:w-14 h-12 sm:h-14 bg-gradient-to-br from-emerald-400 to-green-600 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-glow-emerald animate-float">
+          <BadgeCheck className="w-6 sm:w-7 h-6 sm:h-7 text-white" />
         </div>
-        <h2 className="text-base sm:text-lg md:text-xl font-bold text-white text-center mb-1">Payment Successful!</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold text-white text-center mb-1 font-display">Payment Successful!</h2>
         <p className="text-xs sm:text-sm text-gray-400 text-center mb-4 sm:mb-5">{purchasedKey.product || mod?.title} — {purchasedKey.duration}</p>
 
         {/* License Key */}
-        <div className="bg-[#050508]/80 border border-[#1e1e2e] rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4">
-          <p className="text-[10px] sm:text-[11px] text-gray-500 mb-1 sm:mb-1.5">Your License Key</p>
+        <div className="bg-[#050508]/80 border border-amber-500/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+          <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+            <p className="text-[10px] sm:text-[11px] text-gray-500 font-medium uppercase tracking-wider">Your License Key</p>
+            <KeyRound className="w-3.5 h-3.5 text-amber-400/60" />
+          </div>
           <p className="text-xs sm:text-sm md:text-base font-mono font-bold text-amber-400 break-all select-all">{purchasedKey.key}</p>
-          <button onClick={copyKey} className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-gray-600 hover:text-amber-400 transition-colors">
-            {copiedKey ? '✓ Copied!' : 'Click to copy'}
+          <button onClick={copyKey} className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-gray-500 hover:text-amber-400 transition-colors inline-flex items-center gap-1">
+            {copiedKey ? <><Check className="w-3 h-3 text-emerald-400" /> <span className="text-emerald-400">Copied!</span></> : <><Copy className="w-3 h-3" /> Click to copy</>}
           </button>
         </div>
 
@@ -131,6 +138,13 @@ function SuccessView({ purchasedKey, mod, onReset }) {
             </div>
           )}
 
+          {purchasedKey.discountAmount > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] sm:text-xs text-gray-500">Coupon {purchasedKey.couponCode ? `(${purchasedKey.couponCode})` : ''}</span>
+              <span className="text-[11px] sm:text-xs font-medium text-emerald-400">-₹{Number(purchasedKey.discountAmount).toLocaleString()}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-[11px] sm:text-xs text-gray-500">Amount Paid</span>
             <span className="text-[11px] sm:text-xs font-bold text-emerald-400">₹{Number(purchasedKey.amount || 0).toLocaleString()}</span>
@@ -143,12 +157,12 @@ function SuccessView({ purchasedKey, mod, onReset }) {
 
           <div className="flex justify-between items-center">
             <span className="text-[11px] sm:text-xs text-gray-500">Status</span>
-            <span className="text-[10px] sm:text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-700/30">Completed</span>
+            <span className="chip-green !text-[10px]">Completed</span>
           </div>
         </div>
 
-        <button onClick={onReset} className="w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 hover:from-amber-500 hover:via-yellow-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 hover:shadow-amber-500/40 transition-all duration-200 active:scale-[0.97]">
-          Buy Another Key
+        <button onClick={onReset} className="btn-gold w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2">
+          <Zap className="w-3.5 h-3.5" /> Buy Another Key
         </button>
       </div>
     </div>
@@ -174,7 +188,7 @@ export default function Home() {
       ? selectedDuration.flashSale.flashPrice : selectedDuration.price)
     : 0;
   const hasFlashSale = selectedDuration?.flashSale?.isActive && selectedDuration.flashSale?.flashPrice != null;
-  const isFlashActive = hasFlashSale && selectedDuration.flashSale?.endAt && new Date(selectedDuration.flashSale.endAt) > new Date();
+  const isFlashActive = hasFlashSale && selectedDuration.flashSale?.endAt && new Date(selectedDuration.flashSale.endAt) > new Date() && (!selectedDuration.flashSale?.startAt || new Date(selectedDuration.flashSale.startAt) <= new Date());
 
   // Discounted price after coupon
   const discountedPrice = appliedCoupon ? appliedCoupon.finalAmount : effectivePrice;
@@ -223,6 +237,7 @@ export default function Home() {
     productId: selectedMod._id,
     durationValue: selectedDuration.value,
     durationUnit: selectedDuration.unit,
+    couponCode: appliedCoupon?.code || '',
   });
 
   const handleComplete = async ({ paymentId }) => {
@@ -231,6 +246,7 @@ export default function Home() {
       durationValue: selectedDuration.value,
       durationUnit: selectedDuration.unit,
       paymentId,
+      couponCode: appliedCoupon?.code || '',
     });
     setPurchasedKey(res.data);
     toast.success('Key delivered!');
@@ -244,23 +260,33 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col relative">
       <Bg />
-      <main className="flex-1 flex flex-col items-center justify-start px-3 sm:px-5 pt-16 sm:pt-20 md:pt-28 lg:pt-36">
-        <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl">
-          <div className="text-center mb-4 sm:mb-6">
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white">Purchase <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400">License</span></h1>
-            <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 mt-1">Select your mod and duration below</p>
+      <main className="flex-1 flex flex-col items-center justify-start px-3 sm:px-5 pt-14 sm:pt-16 md:pt-20 lg:pt-24">
+        <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl animate-fade-up">
+
+          {/* ─── Hero ─── */}
+          <div className="text-center mb-5 sm:mb-7">
+            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1 mb-3">
+              <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-400" />
+              <span className="text-[10px] md:text-xs text-amber-400 font-medium tracking-wide">Instant Digital Delivery</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white font-display leading-tight">
+              Purchase <span className="text-gradient">License Keys</span>
+            </h1>
+            <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 mt-2">Select your mod, choose a duration & pay via UPI — delivered instantly</p>
           </div>
 
-          <div className="bg-[#0d0d1a]/90 backdrop-blur-xl border border-[#1e1e2e]/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 lg:p-7 shadow-2xl shadow-black/50">
+          <div className="card-glass p-4 sm:p-5 md:p-6 lg:p-7 relative overflow-hidden">
+            {/* Top accent line */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
 
             {/* ─── Select Mod ─── */}
             <div className="mb-3 sm:mb-3.5 md:mb-4">
               <label className="text-[11px] sm:text-xs md:text-sm font-medium text-gray-400 mb-1 sm:mb-1.5 block">Select Mod</label>
-              <div className="relative">
+              <div className="relative group">
                 <select
                   value={selectedMod?._id || ''}
                   onChange={(e) => handleModChange(e.target.value)}
-                  className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl sm:rounded-2xl px-3 sm:px-3.5 md:px-4 py-2.5 sm:py-3 text-xs sm:text-sm md:text-base text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all"
+                  className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl sm:rounded-2xl px-3 sm:px-3.5 md:px-4 py-2.5 sm:py-3 text-xs sm:text-sm md:text-base text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all group-hover:border-[#2a2a3e]"
                 >
                   <option value="">— Select a Mod —</option>
                   {mods.map((m) => (
@@ -278,7 +304,7 @@ export default function Home() {
                 {(() => {
                   const availableDurs = selectedMod.durations.filter(d => !d.isSoldOut);
                   return availableDurs.length > 0 ? (
-                    <div className="relative">
+                    <div className="relative group">
                       <select
                         value={selectedDuration ? `${selectedDuration.value}_${selectedDuration.unit}` : ''}
                         onChange={(e) => {
@@ -288,11 +314,11 @@ export default function Home() {
                           const dur = selectedMod.durations.find(d => String(d.value) === value && d.unit === unit);
                           if (dur && !dur.isSoldOut) { setSelectedDuration(dur); setAppliedCoupon(null); setCouponCode(''); }
                         }}
-                        className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl sm:rounded-2xl px-3 sm:px-3.5 md:px-4 py-2.5 sm:py-3 text-xs sm:text-sm md:text-base text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all"
+                        className="w-full bg-[#0a0a14] border border-[#1e1e2e] rounded-xl sm:rounded-2xl px-3 sm:px-3.5 md:px-4 py-2.5 sm:py-3 text-xs sm:text-sm md:text-base text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all group-hover:border-[#2a2a3e]"
                       >
                         <option value="">— Select duration —</option>
                         {availableDurs.map((dur, i) => {
-                          const hasFS = dur.flashSale?.isActive && dur.flashSale?.flashPrice != null && new Date(dur.flashSale.endAt) > new Date();
+                          const hasFS = dur.flashSale?.isActive && dur.flashSale?.flashPrice != null && new Date(dur.flashSale.endAt) > new Date() && (!dur.flashSale?.startAt || new Date(dur.flashSale.startAt) <= new Date());
                           return (
                             <option key={i} value={`${dur.value}_${dur.unit}`}>
                               {dur.label} — {hasFS ? `₹${dur.flashSale.flashPrice.toLocaleString()}` : `₹${dur.price.toLocaleString()}`}
@@ -314,20 +340,20 @@ export default function Home() {
 
             {/* ─── Flash Sale Badge ─── */}
             {isFlashActive && selectedDuration?.flashSale?.endAt && (
-              <div className="mb-3 sm:mb-3.5 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+              <div className="mb-3 sm:mb-3.5 bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-orange-500/10 border border-amber-500/25 rounded-xl sm:rounded-2xl p-3 sm:p-4 animate-fade-in">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Sparkles className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400" />
-                    <span className="text-xs sm:text-sm font-semibold text-amber-400">🔥 Flash Sale</span>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400 animate-pulse" />
+                    <span className="text-xs sm:text-sm font-bold text-amber-400 font-display">🔥 Flash Sale Active</span>
                   </div>
                   <Countdown endAt={selectedDuration.flashSale.endAt} />
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 mt-1.5 sm:mt-2 flex-wrap">
+                <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
                   <span className="text-[11px] sm:text-xs text-gray-500 line-through">₹{selectedDuration.price.toLocaleString()}</span>
                   <span className="text-sm sm:text-base font-bold text-amber-400">₹{selectedDuration.flashSale.flashPrice.toLocaleString()}</span>
                   {selectedDuration.price > 0 && (
-                    <span className="text-[10px] sm:text-[11px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                      -{Math.round((1 - selectedDuration.flashSale.flashPrice / selectedDuration.price) * 100)}%
+                    <span className="text-[10px] sm:text-[11px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full font-semibold">
+                      Save -{Math.round((1 - selectedDuration.flashSale.flashPrice / selectedDuration.price) * 100)}%
                     </span>
                   )}
                 </div>
@@ -336,7 +362,7 @@ export default function Home() {
 
             {/* ─── Price Summary + Coupon ─── */}
             {selectedDuration && !selectedDuration.isSoldOut && (
-              <div className="mb-4 bg-[#0a0a14]/60 border border-[#1e1e2e]/50 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 md:p-4 space-y-3 sm:space-y-3.5">
+              <div className="mb-4 bg-[#0a0a14]/60 border border-[#1e1e2e]/50 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 md:p-4 space-y-3 sm:space-y-3.5 animate-fade-in">
                 {/* Price breakdown */}
                 <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex items-center justify-between text-[11px] sm:text-xs md:text-sm">
@@ -345,18 +371,21 @@ export default function Home() {
                   </div>
                   {appliedCoupon && (
                     <div className="flex items-center justify-between text-[11px] sm:text-xs pt-1.5 border-t border-[#1e1e2e]/40">
-                      <span className="flex items-center gap-1 text-emerald-400"><Percent className="w-3 h-3" /> {appliedCoupon.code}</span>
-                      <span className="text-emerald-400">-₹{appliedCoupon.discountAmount.toLocaleString()}</span>
+                      <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                        <Percent className="w-3 h-3" /> {appliedCoupon.code}
+                        <span className="text-[9px] text-gray-600 font-normal">applied</span>
+                      </span>
+                      <span className="text-emerald-400 font-semibold">-₹{appliedCoupon.discountAmount.toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm sm:text-base font-bold pt-1.5 border-t border-[#1e1e2e]/40">
+                  <div className="flex items-center justify-between text-sm sm:text-base font-bold pt-2 border-t border-[#1e1e2e]/40">
                     <span className="text-gray-300">Total</span>
-                    <span className="text-white">₹{discountedPrice.toLocaleString()}</span>
+                    <span className="text-white font-display text-base sm:text-lg">{discountedPrice > 0 ? `₹${discountedPrice.toLocaleString()}` : '₹0'}</span>
                   </div>
                 </div>
 
                 {/* Coupon input */}
-                <div className={appliedCoupon ? 'opacity-60' : ''}>
+                <div className={appliedCoupon ? 'opacity-70' : ''}>
                   <div className="flex gap-1.5 sm:gap-2">
                     <div className="relative flex-1">
                       <Tag className="absolute left-2 sm:left-2.5 top-1/2 -translate-y-1/2 w-3 sm:w-3.5 h-3 sm:h-3.5 text-gray-600" />
@@ -364,18 +393,18 @@ export default function Home() {
                         type="text"
                         value={couponCode}
                         onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setAppliedCoupon(null); }}
-                        className="w-full bg-[#050508]/80 border border-[#1e1e2e] rounded-lg sm:rounded-xl pl-7 sm:pl-8 pr-2 sm:pr-2.5 py-1.5 sm:py-2 text-[11px] sm:text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition-all"
+                        className={`w-full bg-[#050508]/80 border rounded-lg sm:rounded-xl pl-7 sm:pl-8 pr-2 sm:pr-2.5 py-1.5 sm:py-2 text-[11px] sm:text-xs text-white font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition-all ${appliedCoupon ? 'border-emerald-700/40 text-emerald-400' : 'border-[#1e1e2e]'}`}
                         placeholder={appliedCoupon ? `${appliedCoupon.code} applied` : 'Enter coupon code'}
                         disabled={!!appliedCoupon}
                       />
                     </div>
                     {appliedCoupon ? (
-                      <button onClick={() => { setAppliedCoupon(null); setCouponCode(''); }} className="text-[11px] text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all shrink-0 font-medium">
+                      <button onClick={() => { setAppliedCoupon(null); setCouponCode(''); }} className="btn-danger !px-2.5 sm:!px-3 !py-1.5 sm:!py-2 shrink-0">
                         ✕ Remove
                       </button>
                     ) : (
                       <button onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()} className="text-[11px] text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all shrink-0 font-medium disabled:opacity-50">
-                        {couponLoading ? '...' : 'Apply'}
+                        {couponLoading ? <span className="inline-block w-3.5 h-3.5 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin align-middle" /> : 'Apply'}
                       </button>
                     )}
                   </div>
@@ -394,9 +423,11 @@ export default function Home() {
 
             {/* No mod selected */}
             {!selectedMod && (
-              <div className="text-center py-5 sm:py-6 md:py-8 bg-[#0a0a14]/50 rounded-xl sm:rounded-2xl border border-dashed border-[#1a1a28]">
-                <KeyRound className="w-7 sm:w-8 md:w-10 h-7 sm:h-8 md:h-10 mx-auto mb-1.5 sm:mb-2 text-gray-700" />
-                <p className="text-gray-600 text-sm sm:text-base font-medium">Select a Mod to Continue</p>
+              <div className="text-center py-6 sm:py-7 md:py-8 bg-[#0a0a14]/50 rounded-xl sm:rounded-2xl border border-dashed border-[#1a1a28]">
+                <div className="mx-auto w-10 h-10 rounded-xl bg-[#1a1a28] flex items-center justify-center mb-2">
+                  <KeyRound className="w-5 h-5 text-gray-600" />
+                </div>
+                <p className="text-gray-500 text-sm sm:text-base font-medium">Select a Mod to Continue</p>
                 <p className="text-gray-700 text-[11px] sm:text-xs mt-1">Choose a mod from the dropdown above</p>
               </div>
             )}
@@ -415,14 +446,20 @@ export default function Home() {
               </div>
             )}
 
-            <div className="mt-3 sm:mt-4 md:mt-5 flex items-center justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600 flex-wrap">
-              <span className="flex items-center gap-1"><ShieldCheck className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-emerald-400" /> Secure</span>
-              <span className="hidden xs:inline">•</span>
-              <span>UPI</span>
-              <span className="hidden xs:inline">•</span>
-              <span>Instant</span>
+            {/* Trust indicators */}
+            <div className="mt-4 sm:mt-5 pt-4 border-t border-[#1e1e2e]/40 flex items-center justify-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500 flex-wrap">
+              <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-400" /> 100% Secure</span>
+              <span className="hidden sm:inline text-gray-800">•</span>
+              <span className="flex items-center gap-1.5"><Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400" /> Instant Delivery</span>
+              <span className="hidden sm:inline text-gray-800">•</span>
+              <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-emerald-400" /> UPI Verified</span>
             </div>
           </div>
+
+          {/* Footer */}
+          <p className="text-center text-[10px] text-gray-700 mt-5 mb-8">
+            🔒 Secured payments by QuickGateway · GPay · PhonePe · Paytm
+          </p>
         </div>
       </main>
     </div>
