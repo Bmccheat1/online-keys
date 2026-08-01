@@ -58,7 +58,7 @@ async function attachAvailability(products) {
 // @route   GET /api/products
 const getProducts = async (req, res, next) => {
   try {
-    const { gameId, active, page = 1, limit = 20 } = req.query;
+    const { gameId, active, page = 1, limit = 20, noimage } = req.query;
     const filter = {};
     
     if (gameId) filter.gameId = gameId;
@@ -66,8 +66,13 @@ const getProducts = async (req, res, next) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // When `noimage=1` the heavy base64 image field is excluded from the response —
+    // used by title-only consumers (header typewriter, purchase toasts) to keep
+    // the payload tiny (a mod list with images can be megabytes of base64).
+    const projection = noimage === '1' || noimage === 'true' ? { image: 0 } : null;
+
     let [products, total] = await Promise.all([
-      Product.find(filter)
+      Product.find(filter, projection)
         .populate('gameId', 'name image')
         .sort({ createdAt: -1 })
         .skip(skip)

@@ -1,0 +1,6 @@
+import{c as h}from"./index-F58RrTUe.js";/**
+ * @license lucide-react v1.26.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const u=[["path",{d:"M12 13v8",key:"1l5pq0"}],["path",{d:"M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242",key:"1pljnt"}],["path",{d:"m8 17 4-4 4 4",key:"1quai1"}]],M=h("cloud-upload",u);function x(e,{maxSize:c=900,quality:g=.82}={}){return new Promise((i,s)=>{if(e.size<=300*1024)return i(e);const o=new FileReader;o.onload=()=>{const t=new Image;t.onload=()=>{let{width:a,height:n}=t;if(a<=c&&n<=c&&e.size<=1024*1024)return i(e);const m=Math.min(1,c/Math.max(a,n));a=Math.max(1,Math.round(a*m)),n=Math.max(1,Math.round(n*m));const r=document.createElement("canvas");r.width=a,r.height=n,r.getContext("2d").drawImage(t,0,0,a,n);const d=e.type==="image/png"?"image/png":"image/jpeg";r.toBlob(p=>{if(!p)return s(new Error("Compression failed"));i(new File([p],e.name.replace(/\.[^.]+$/,"")+(d==="image/png"?".png":".jpg"),{type:d}))},d,d==="image/png"?.9:g)},t.onerror=()=>s(new Error("Invalid image file")),t.src=o.result},o.onerror=()=>s(new Error("Could not read file")),o.readAsDataURL(e)})}export{M as C,x as c};

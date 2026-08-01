@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import api, { settingAPI } from '../../api';
+import { compressImage } from '../../utils/compressImage';
 import Loader from '../../components/common/Loader';
 import { Globe, ShieldCheck, Save, ImagePlus, UploadCloud, Trash2 } from 'lucide-react';
 
@@ -83,10 +84,12 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); e.target.value = ''; return; }
-    const fd = new FormData();
-    fd.append('image', file);
     setUploadingLogo(true);
     try {
+      // Logos are small — 400px cap keeps the header payload tiny
+      const compressed = await compressImage(file, { maxSize: 400, quality: 0.85 });
+      const fd = new FormData();
+      fd.append('image', compressed);
       const res = await api.post('/upload', fd, { headers: { 'Content-Type': undefined } });
       const url = res.data.url;
       setLogoPreview(url);

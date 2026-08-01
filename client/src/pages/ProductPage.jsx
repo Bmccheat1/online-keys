@@ -47,18 +47,18 @@ function Bg() {
       {/* Base gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#050508] via-[#080812] to-[#0a0608]" />
 
-      {/* ─── Aurora glow blobs ─── */}
-      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full blur-[140px] opacity-30" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.28) 0%, transparent 70%)', animation: 'drift-slow 12s ease-in-out infinite' }} />
-      <div className="absolute -bottom-40 -right-40 w-[550px] h-[550px] rounded-full blur-[150px] opacity-25" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.22) 0%, transparent 70%)', animation: 'drift-slower 16s ease-in-out infinite' }} />
-      <div className="absolute top-1/3 -left-24 w-[350px] h-[350px] rounded-full blur-[130px] opacity-20" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.18) 0%, transparent 70%)', animation: 'drift-slow 10s ease-in-out infinite reverse' }} />
-      <div className="absolute bottom-1/4 right-0 w-[320px] h-[320px] rounded-full blur-[110px] opacity-15" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)', animation: 'drift-slower 14s ease-in-out infinite alternate' }} />
-      <div className="absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[120px] opacity-15" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.14) 0%, transparent 70%)', animation: 'drift-slow 18s ease-in-out infinite alternate-reverse' }} />
+      {/* ─── Aurora glow blobs (strong enough to clearly see) ─── */}
+      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full blur-[140px] opacity-40" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.32) 0%, transparent 70%)', animation: 'drift-slow 12s ease-in-out infinite' }} />
+      <div className="absolute -bottom-40 -right-40 w-[550px] h-[550px] rounded-full blur-[150px] opacity-35" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.26) 0%, transparent 70%)', animation: 'drift-slower 16s ease-in-out infinite' }} />
+      <div className="absolute top-1/3 -left-24 w-[350px] h-[350px] rounded-full blur-[130px] opacity-28" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.22) 0%, transparent 70%)', animation: 'drift-slow 10s ease-in-out infinite reverse' }} />
+      <div className="absolute bottom-1/4 right-0 w-[320px] h-[320px] rounded-full blur-[110px] opacity-22" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.22) 0%, transparent 70%)', animation: 'drift-slower 14s ease-in-out infinite alternate' }} />
+      <div className="absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[120px] opacity-22" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.18) 0%, transparent 70%)', animation: 'drift-slow 18s ease-in-out infinite alternate-reverse' }} />
 
       {/* ─── Center spotlight behind content ─── */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[750px] h-[520px] rounded-full blur-[160px] opacity-25" style={{ background: 'radial-gradient(ellipse, rgba(245,158,11,0.16) 0%, transparent 65%)', animation: 'glow-pulse 9s ease-in-out infinite' }} />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[750px] h-[520px] rounded-full blur-[160px] opacity-35" style={{ background: 'radial-gradient(ellipse, rgba(245,158,11,0.2) 0%, transparent 65%)', animation: 'glow-pulse 9s ease-in-out infinite' }} />
 
       {/* ─── Dot grid ─── */}
-      <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
+      <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '34px 34px' }} />
 
       {/* ─── Floating golden particles ─── */}
       {particles.map((p, i) => (

@@ -23,20 +23,22 @@ export default function Header() {
   const [placeholder, setPlaceholder] = useState('Search mods...');
   // Uploaded site logo (from Settings)
   const [siteLogo, setSiteLogo] = useState('');
+  const [logoLoading, setLogoLoading] = useState(true);
 
   // Load site logo once
   useEffect(() => {
     configAPI.get()
       .then((res) => setSiteLogo(res.data?.siteLogo || ''))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLogoLoading(false));
   }, []);
 
   // Keep the input in sync when navigating (back/forward, filters, etc.)
   useEffect(() => { setQuery(q); }, [q]);
 
-  // Load mod names once
+  // Load mod names once (noimage=1 → tiny payload, no base64 images)
   useEffect(() => {
-    productAPI.getAll({ active: 'true', limit: '50' })
+    productAPI.getAll({ active: 'true', limit: '10', noimage: '1' })
       .then((res) => {
         const titles = (res.data || []).map((p) => p.title).filter(Boolean).slice(0, 10);
         setSuggestions(titles);
@@ -95,16 +97,19 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-[#080812]/85 backdrop-blur-xl border-b border-[#1e1e2e]/50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* ─── Left: logo (uploaded image or default key icon) ─── */}
-          <Link to="/" className="flex-shrink-0 group" title="KeyStore">
-            {siteLogo ? (
+          {/* ─── Left: logo (uploaded image or default key icon) — fixed-size slot, no flash/jump ─── */}
+          <Link to="/" className="flex-shrink-0 group w-8 h-8 sm:w-9 sm:h-9" title="KeyStore">
+            {logoLoading ? (
+              /* Skeleton while config loads — same size, so no layout shift */
+              <span className="block w-full h-full rounded-lg bg-[#14142a]/80 border border-[#1e1e2e]/50 animate-pulse" />
+            ) : siteLogo ? (
               <img
                 src={siteLogo}
                 alt="Logo"
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-contain bg-[#0d0d1a]/70 border border-[#1e1e2e]/60 p-0.5 group-hover:scale-105 transition-transform duration-200"
+                className="w-full h-full rounded-lg object-contain bg-[#0d0d1a]/70 border border-[#1e1e2e]/60 p-0.5 group-hover:scale-105 transition-transform duration-200 animate-fade-in"
               />
             ) : (
-              <span className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-gold group-hover:scale-105 transition-transform duration-200">
+              <span className="flex items-center justify-center w-full h-full rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-gold group-hover:scale-105 transition-transform duration-200">
                 <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </span>
             )}

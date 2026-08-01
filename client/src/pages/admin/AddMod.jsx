@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api, { productAPI } from '../../api';
+import { compressImage } from '../../utils/compressImage';
 import Loader from '../../components/common/Loader';
 import { Package, Plus, X, ArrowLeft, Sparkles, UploadCloud, Trash2 } from 'lucide-react';
 
@@ -50,15 +51,16 @@ export default function AddMod() {
     setForm({ ...form, durations: form.durations.filter((_, i) => i !== index) });
   };
 
-  // Upload product image directly to the server
+  // Upload product image directly to the server (compressed first — keeps DB + API light)
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); e.target.value = ''; return; }
     setUploading(true);
     try {
+      const compressed = await compressImage(file, { maxSize: 900, quality: 0.82 });
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', compressed);
       // CRITICAL: default header is application/json — axios would JSON-ify the
       // FormData instead of sending multipart. undefined lets the browser set
       // multipart/form-data with the boundary automatically.

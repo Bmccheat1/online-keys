@@ -126,8 +126,9 @@ export default function PurchaseToasts() {
   const modsRef = useRef([]);
 
   // Load real catalog once — toasts use real mod titles & durations
+  // noimage=1: skip base64 images (only titles needed) → tiny payload
   useEffect(() => {
-    productAPI.getAll({ active: 'true', limit: '50' })
+    productAPI.getAll({ active: 'true', limit: '50', noimage: '1' })
       .then((r) => { modsRef.current = r.data || []; })
       .catch(() => {});
   }, []);
