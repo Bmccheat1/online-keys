@@ -1,13 +1,15 @@
 import { lazy, Suspense, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Loader from './components/common/Loader';
 import Header from './components/common/Header';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminSidebar from './components/admin/AdminSidebar';
 import AdminHeader from './components/admin/AdminHeader';
+import PurchaseToasts from './components/common/PurchaseToasts';
 
 // Lazy load
 const Home = lazy(() => import('./pages/Home'));
+const ProductPage = lazy(() => import('./pages/ProductPage'));
 const Login = lazy(() => import('./pages/Login'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -38,21 +40,26 @@ function AdminLayout({ children }) {
 }
 
 export default function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
   return (
     <div className="min-h-screen">
       <Header />
+      {/* Live purchase popups — public pages only */}
+      {!isAdminRoute && <PurchaseToasts />}
       <main>
         <Suspense fallback={<Loader text="Loading..." />}>
           <Routes>
             {/* Public - Main buy page is the home */}
             <Route path="/" element={<Home />} />
+            <Route path="/product/:id" element={<ProductPage />} />
             <Route path="/login" element={<Login />} />
 
             {/* Redirect old routes to home */}
             <Route path="/mods" element={<Navigate to="/" replace />} />
             <Route path="/mods/:id" element={<Navigate to="/" replace />} />
             <Route path="/products" element={<Navigate to="/" replace />} />
-            <Route path="/products/:id" element={<Navigate to="/" replace />} />
+            <Route path="/products/:id" element={<Navigate to="/product/:id" replace />} />
 
             {/* Admin */}
             <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />

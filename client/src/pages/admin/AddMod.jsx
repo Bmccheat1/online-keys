@@ -13,13 +13,13 @@ export default function AddMod() {
   const isEdit = Boolean(id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', durations: [{ ...emptyDuration }] });
+  const [form, setForm] = useState({ title: '', description: '', image: '', durations: [{ ...emptyDuration }] });
 
   useEffect(() => {
     if (isEdit) {
       productAPI.getById(id).then((res) => {
         const p = res.data;
-        setForm({ title: p.title, description: p.description || '', durations: p.durations.length > 0 ? p.durations : [{ ...emptyDuration }] });
+        setForm({ title: p.title, description: p.description || '', image: p.image || '', durations: p.durations.length > 0 ? p.durations : [{ ...emptyDuration }] });
       }).finally(() => setLoading(false));
     } else { setLoading(false); }
   }, [id, isEdit]);
@@ -92,6 +92,33 @@ export default function AddMod() {
           <div>
             <label className="field">Description</label>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field" rows="3" placeholder="Mod description..." />
+          </div>
+          <div>
+            <label className="field">
+              Image URL <span className="text-gray-600 font-normal text-xs">(optional — shown on the store cards)</span>
+            </label>
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <input
+                  type="url"
+                  value={form.image}
+                  onChange={(e) => setForm({ ...form, image: e.target.value })}
+                  className="input-field font-mono"
+                  placeholder="https://example.com/product.jpg"
+                />
+                <p className="text-xs text-gray-600 mt-1">Paste a direct image link (JPG/PNG/WebP). Leave empty to use the auto icon.</p>
+              </div>
+              {form.image && (
+                <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#1e1e2e] bg-[#0a0a14] flex-shrink-0">
+                  <img
+                    src={form.image}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
