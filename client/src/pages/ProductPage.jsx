@@ -493,13 +493,10 @@ export default function ProductPage() {
                 {/* Smart Pay button */}
                 <CheckoutTrigger
                   disabled={!selectedDuration || !inStock}
-                  soldOut={!inStock}
-                  initiate={handleInitiate}
-                  complete={handleComplete}
-                  release={handleRelease}
-                  label={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
-                  noDurationLabel="Select Duration"
-                  soldOutLabel="Sold Out"
+                  initiateOrder={handleInitiate}
+                  onComplete={handleComplete}
+                  releaseReservation={handleRelease}
+                  buttonLabel={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
                 >
                   <span className="flex items-center gap-2">
                     {!selectedDuration || !inStock
@@ -596,12 +593,10 @@ export default function ProductPage() {
 
             <CheckoutTrigger
               disabled={!selectedDuration || !inStock}
-              initiate={handleInitiate}
-              complete={handleComplete}
-              release={handleRelease}
-              label={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
-              noDurationLabel="Select Duration"
-              soldOutLabel="Sold Out"
+              initiateOrder={handleInitiate}
+              onComplete={handleComplete}
+              releaseReservation={handleRelease}
+              buttonLabel={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
             >
               <span className="inline-flex items-center justify-center gap-2 btn-gold !py-3 !px-5 sm:!px-6 !text-sm shrink-0">
                 {!selectedDuration || !inStock

@@ -423,9 +423,9 @@ export default function EmbeddedCheckout({
 
             {/* ========== PENDING (QR + Timer) ========== */}
             {status === 'pending' && (
-              <div className="flex flex-col items-center gap-3 animate-fade-in">
+              <div className="flex flex-col items-stretch gap-4 animate-fade-in">
                 {/* Header */}
-                <div className="w-full flex items-center gap-2 pb-1">
+                <div className="w-full flex items-center gap-2.5 pb-2 border-b border-[#1e1e2e]/50">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 border border-amber-500/30 flex items-center justify-center font-bold text-[#0a0a14] text-xs shrink-0 shadow-gold-sm">
                     {payment?.merchantName?.charAt(0)?.toUpperCase() || 'M'}
                   </div>
@@ -444,16 +444,16 @@ export default function EmbeddedCheckout({
 
                 {/* Custom Amount Input */}
                 {payment?.isCustomAmount && !amountLocked ? (
-                  <div className="w-full flex flex-col items-center gap-3 py-2">
+                  <div className="w-full flex flex-col items-center gap-3 py-3">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Enter Amount to Pay</span>
-                    <div className="relative flex items-center rounded-xl py-3 w-full max-w-[220px] bg-[#050508]/80 border border-[#1e1e2e]/60">
+                    <div className="relative flex items-center rounded-xl py-3 w-full max-w-[240px] bg-[#050508]/80 border border-[#1e1e2e]/60">
                       <span className="absolute left-4 text-lg font-bold text-gray-500">₹</span>
                       <input type="text" inputMode="decimal" placeholder="0.00" value={customAmount}
                         onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d{0,2}$/.test(v)) setCustomAmount(v); }}
                         className="w-full bg-transparent text-2xl font-extrabold text-center outline-none border-none px-10 text-white" autoFocus />
                     </div>
                     <button onClick={handleSetAmount} disabled={!customAmount || parseFloat(customAmount) < 1 || creating}
-                      className="w-full max-w-[220px] py-2.5 px-5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                      className="w-full max-w-[240px] py-2.5 px-5 rounded-xl text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                       style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', boxShadow: '0 4px 16px rgba(217,119,6,0.25)' }}>
                       {creating ? <span className="flex items-center justify-center gap-1.5"><Spinner size="xs" />Processing...</span>
                         : `Pay ₹${customAmount ? parseFloat(customAmount).toFixed(2) : '0.00'}`}
@@ -461,13 +461,14 @@ export default function EmbeddedCheckout({
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col items-center py-1">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-0.5">Amount</span>
-                      <span className="text-2xl font-extrabold tracking-tight text-white flex items-baseline">
-                        <span className="text-lg font-semibold mr-0.5 text-gray-500">₹</span>
+                    {/* Amount + timer */}
+                    <div className="flex flex-col items-center py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Amount to Pay</span>
+                      <span className="text-3xl font-extrabold tracking-tight text-white flex items-baseline">
+                        <span className="text-lg font-semibold mr-1 text-gray-500">₹</span>
                         {payment?.isCustomAmount ? parseFloat(customAmount).toFixed(2) : Number(payment?.amount || 0).toFixed(2)}
                       </span>
-                      <div className={`inline-flex items-center gap-1.5 mt-2 py-1 px-3 rounded-full text-[10px] font-semibold select-none ${qrExpired ? 'bg-red-500/10 text-red-400 border border-red-800/40' : 'bg-amber-500/10 text-amber-400 border border-amber-800/40'}`}>
+                      <div className={`inline-flex items-center gap-1.5 mt-3 py-1 px-3.5 rounded-full text-[10px] font-semibold select-none ${qrExpired ? 'bg-red-500/10 text-red-400 border border-red-800/40' : 'bg-amber-500/10 text-amber-400 border border-amber-800/40'}`}>
                         {qrExpired ? (
                           <span className="flex items-center gap-1.5 cursor-pointer" onClick={handleQrRetry}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
@@ -478,9 +479,11 @@ export default function EmbeddedCheckout({
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="relative p-2 rounded-xl bg-white transition-all duration-300" style={{ opacity: qrExpired ? 0.6 : 1, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-                        <img key={qrRefreshKey} src={getQrUrl()} alt="UPI QR" className="w-[160px] h-[160px] sm:w-[180px] sm:h-[180px] block rounded-lg" />
+
+                    {/* QR */}
+                    <div className="flex flex-col items-center gap-2 py-3 border-t border-dashed border-[#1e1e2e]/50">
+                      <div className="relative p-2.5 rounded-xl bg-white transition-all duration-300" style={{ opacity: qrExpired ? 0.6 : 1, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                        <img key={qrRefreshKey} src={getQrUrl()} alt="UPI QR" className="w-[170px] h-[170px] sm:w-[190px] sm:h-[190px] block rounded-lg" />
                         {qrExpired && (
                           <button onClick={handleQrRetry} className="absolute inset-0 flex items-center justify-center cursor-pointer z-10">
                             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl backdrop-blur-md transition-all hover:scale-110 active:scale-95" style={{ background: 'rgba(0,0,0,0.6)', color: '#fff' }}>
@@ -490,20 +493,22 @@ export default function EmbeddedCheckout({
                           </button>
                         )}
                       </div>
-                      {!qrExpired && <p className="text-[10px] text-gray-600 text-center max-w-[200px] leading-relaxed">Scan QR with any UPI app</p>}
+                      <p className="text-[11px] text-gray-600 text-center max-w-[220px] leading-relaxed">Scan QR with any UPI app (GPay, PhonePe, Paytm)</p>
                     </div>
-                    <div className="flex items-center justify-center gap-1.5 py-0.5">
-                      <Spinner size="xs" />
-                      <span className="text-[10px] font-medium text-gray-500">Waiting for payment...</span>
+
+                    {/* Waiting + security footer */}
+                    <div className="w-full flex flex-col items-center gap-2.5 pb-1">
+                      <div className="flex items-center justify-center gap-2 py-1.5 px-4 rounded-full bg-[#050508]/60 border border-[#1e1e2e]/50">
+                        <Spinner size="xs" />
+                        <span className="text-[11px] font-medium text-gray-400">Waiting for payment...</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-widest text-gray-700">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                        <span>Secured by QuickGateway</span>
+                      </div>
                     </div>
                   </>
                 )}
-                <div className="w-full text-center pt-1.5 border-t border-[#1e1e2e]/40">
-                  <div className="flex items-center justify-center gap-1 text-[10px] uppercase font-bold tracking-widest text-gray-700">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
-                    <span>Secured by QuickGateway</span>
-                  </div>
-                </div>
               </div>
             )}
           </div>

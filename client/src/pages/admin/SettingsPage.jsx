@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { settingAPI } from '../../api';
+import api, { settingAPI } from '../../api';
 import Loader from '../../components/common/Loader';
-import { Globe, ShieldCheck, Save } from 'lucide-react';
+import { Globe, ShieldCheck, Save, ImagePlus, UploadCloud, Trash2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({});
@@ -15,6 +15,12 @@ export default function SettingsPage() {
     apiKey: '',
     isActive: true,
   });
+  // Logo state
+  const [logo, setLogo] = useState('');              // saved logo (from DB)
+  const [logoPreview, setLogoPreview] = useState(null); // picked but not saved yet
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [savingLogo, setSavingLogo] = useState(false);
+  const logoFileRef = useRef(null);
 
   useEffect(() => {
     settingAPI.getAll().then((res) => {
@@ -22,6 +28,7 @@ export default function SettingsPage() {
       setSettings(data);
       setGatewayLocked(!!data._gatewayLocked);
       if (data.site_name) setSiteName(data.site_name);
+      if (data.site_logo) setLogo(data.site_logo);
       if (data.payment_gateway) {
         const g = data.payment_gateway;
         setPaymentForm({
@@ -71,13 +78,67 @@ export default function SettingsPage() {
     }
   };
 
+  // ─── Logo handlers ───
+  const handleLogoPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); e.target.value = ''; return; }
+    const fd = new FormData();
+    fd.append('image', file);
+    setUploadingLogo(true);
+    try {
+      const res = await api.post('/upload', fd, { headers: { 'Content-Type': undefined } });
+      setLogoPreview(res.data.url);
+      toast.success('Logo ready — press Save to apply');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSaveLogo = async () => {
+    if (!logoPreview) return;
+    setSavingLogo(true);
+    try {
+      await settingAPI.update('site_logo', {
+        value: logoPreview,
+        description: 'Website logo shown in header',
+      });
+      setLogo(logoPreview);
+      toast.success('Logo saved!');
+    } catch (error) {
+      toast.error('Failed to save');
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setSavingLogo(true);
+    try {
+      await settingAPI.update('site_logo', {
+        value: '',
+        description: 'Website logo shown in header',
+      });
+      setLogo('');
+      setLogoPreview(null);
+      toast.success('Logo removed — default icon will show');
+    } catch (error) {
+      toast.error('Failed to save');
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
   if (loading) return <Loader />;
 
   return (
     <div className="max-w-2xl space-y-6 animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">Settings</h1>
-        <p className="page-sub">Configure site, payments & webhook security</p>
+        <p className="page-sub">Configure site branding & payments</p>
       </div>
 
       {/* ─── Site Name ─── */}
@@ -104,6 +165,79 @@ export default function SettingsPage() {
             {savingSite ? 'Saving...' : <><Save className="w-4 h-4" /> Save</>}
           </button>
         </form>
+      </div>
+
+      {/* ─── Site Logo ─── */}
+      <div className="panel p-5 md:p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-gold">
+            <ImagePlus className="w-5 h-5 text-[#0a0a14]" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white font-display">Site Logo</h3>
+            <p className="text-sm text-gray-500">Upload your logo — shown in the header</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-5">
+          {/* Preview */}
+          <div className="w-20 h-20 shrink-0 rounded-xl bg-[#0d0d1a] border border-[#1e1e2e]/60 flex items-center justify-center overflow-hidden">
+            {(logoPreview || logo) ? (
+              <img src={logoPreview || logo} alt="Logo preview" className="w-full h-full object-contain p-1.5" />
+            ) : (
+              <ImagePlus className="w-8 h-8 text-gray-700" />
+            )}
+          </div>
+
+          {/* Upload */}
+          <div className="flex-1 space-y-2">
+            <button
+              type="button"
+              onClick={() => logoFileRef.current?.click()}
+              disabled={uploadingLogo}
+              className="btn-gold !py-2 !px-5 text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            >
+              {uploadingLogo ? 'Uploading...' : <><UploadCloud className="w-4 h-4" /> Upload Logo</>}
+            </button>
+            <input
+              ref={logoFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleLogoPick}
+            />
+            <p className="text-xs text-gray-600">JPG, PNG, WebP or GIF — max 5 MB</p>
+          </div>
+        </div>
+
+        {/* Picked but not saved yet */}
+        {logoPreview && logoPreview !== logo && (
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSaveLogo}
+              disabled={savingLogo}
+              className="btn-gold !py-2 !px-5 text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+            >
+              {savingLogo ? 'Saving...' : <><Save className="w-4 h-4" /> Save Logo</>}
+            </button>
+            <button type="button" onClick={() => setLogoPreview(null)} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* Remove saved logo */}
+        {logo && !logoPreview && (
+          <button
+            type="button"
+            onClick={handleRemoveLogo}
+            disabled={savingLogo}
+            className="mt-4 text-xs text-red-400/80 hover:text-red-400 inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Remove Logo
+          </button>
+        )}
       </div>
 
       {/* ─── Payment Gateway ─── */}

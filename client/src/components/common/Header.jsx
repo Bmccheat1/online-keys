@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { productAPI } from '../../api';
+import { productAPI, configAPI } from '../../api';
 import { Search, KeyRound, LogIn, LayoutDashboard, X } from 'lucide-react';
 
 /**
@@ -21,6 +21,15 @@ export default function Header() {
   // Real mod names for the animated placeholder
   const [suggestions, setSuggestions] = useState([]);
   const [placeholder, setPlaceholder] = useState('Search mods...');
+  // Uploaded site logo (from Settings)
+  const [siteLogo, setSiteLogo] = useState('');
+
+  // Load site logo once
+  useEffect(() => {
+    configAPI.get()
+      .then((res) => setSiteLogo(res.data?.siteLogo || ''))
+      .catch(() => {});
+  }, []);
 
   // Keep the input in sync when navigating (back/forward, filters, etc.)
   useEffect(() => { setQuery(q); }, [q]);
@@ -86,11 +95,19 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-[#080812]/85 backdrop-blur-xl border-b border-[#1e1e2e]/50">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* ─── Left: logo only (no name) ─── */}
+          {/* ─── Left: logo (uploaded image or default key icon) ─── */}
           <Link to="/" className="flex-shrink-0 group" title="KeyStore">
-            <span className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-gold group-hover:scale-105 transition-transform duration-200">
-              <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </span>
+            {siteLogo ? (
+              <img
+                src={siteLogo}
+                alt="Logo"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-contain bg-[#0d0d1a]/70 border border-[#1e1e2e]/60 p-0.5 group-hover:scale-105 transition-transform duration-200"
+              />
+            ) : (
+              <span className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 shadow-gold group-hover:scale-105 transition-transform duration-200">
+                <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </span>
+            )}
           </Link>
 
           {/* ─── Center: search bar (animated placeholder) ─── */}
