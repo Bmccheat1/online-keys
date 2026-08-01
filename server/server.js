@@ -28,6 +28,18 @@ const app = express();
 // to read the real client IP from X-Forwarded-For
 app.set('trust proxy', 1);
 
+// ─── CORS allowlist ────────────────────────────────────
+// The live store runs on store.loader-key.com; requests with an
+// Authorization header (upload, orders, etc.) need a matching
+// Access-Control-Allow-Origin or the browser blocks them.
+const allowedOrigins = [
+  'https://store.loader-key.com',
+  'https://keys-selling.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:4173',
+];
+if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
+
 // Connect to MongoDB (with serverless caching)
 connectDB();
 
@@ -35,9 +47,11 @@ connectDB();
 app.use(compression()); // Compress responses (70-80% smaller)
 
 app.use(cors({
-  origin: env.isProd 
-    ? process.env.FRONTEND_URL || 'https://keys-selling.vercel.app' 
-    : 'http://localhost:5173',
+  origin: (origin, cb) => {
+    // Allow same-origin/no-origin requests (curl, server-to-server) and allowlisted domains
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
   credentials: true,
 }));
 
