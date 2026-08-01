@@ -88,30 +88,20 @@ export default function SettingsPage() {
     setUploadingLogo(true);
     try {
       const res = await api.post('/upload', fd, { headers: { 'Content-Type': undefined } });
-      setLogoPreview(res.data.url);
-      toast.success('Logo ready — press Save to apply');
+      const url = res.data.url;
+      setLogoPreview(url);
+      // Auto-save — logo applies immediately, no extra step needed
+      await settingAPI.update('site_logo', {
+        value: url,
+        description: 'Website logo shown in header',
+      });
+      setLogo(url);
+      toast.success('Logo saved & applied!');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Upload failed');
     } finally {
       setUploadingLogo(false);
       e.target.value = '';
-    }
-  };
-
-  const handleSaveLogo = async () => {
-    if (!logoPreview) return;
-    setSavingLogo(true);
-    try {
-      await settingAPI.update('site_logo', {
-        value: logoPreview,
-        description: 'Website logo shown in header',
-      });
-      setLogo(logoPreview);
-      toast.success('Logo saved!');
-    } catch (error) {
-      toast.error('Failed to save');
-    } finally {
-      setSavingLogo(false);
     }
   };
 
@@ -210,25 +200,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Picked but not saved yet */}
-        {logoPreview && logoPreview !== logo && (
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSaveLogo}
-              disabled={savingLogo}
-              className="btn-gold !py-2 !px-5 text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
-            >
-              {savingLogo ? 'Saving...' : <><Save className="w-4 h-4" /> Save Logo</>}
-            </button>
-            <button type="button" onClick={() => setLogoPreview(null)} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
-              Cancel
-            </button>
-          </div>
-        )}
-
         {/* Remove saved logo */}
-        {logo && !logoPreview && (
+        {logo && (
           <button
             type="button"
             onClick={handleRemoveLogo}
