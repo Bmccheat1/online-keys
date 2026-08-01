@@ -157,15 +157,21 @@ export default function Home() {
                         const d = m.durations.find(isDurFlashActive);
                         const flashPrice = d?.flashSale?.flashPrice ?? d?.price;
                         const origPrice = d?.price;
+                        const grad = cardGradients[(m.title || '').length % cardGradients.length];
                         return (
                           <Link
                             key={`${half}-${m._id}`}
                             to={`/product/${m._id}`}
                             className="group flex items-center gap-2 shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors pl-1.5 pr-3 py-1.5"
                           >
-                            <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                              <Flame className="w-3 h-3 text-amber-400" />
-                            </span>
+                            {/* Mod image thumb (falls back to letter tile) */}
+                            <ModImage
+                              image={m.image}
+                              title={m.title}
+                              letter={m.title?.charAt(0)?.toUpperCase() || 'M'}
+                              grad={`bg-gradient-to-br ${grad}`}
+                              className="w-6 h-6 rounded-full border border-amber-500/40 flex-shrink-0"
+                            />
                             <span className="text-[10px] sm:text-[11px] text-white font-semibold truncate max-w-[90px] sm:max-w-[160px]">{m.title}</span>
                             <span className="text-[9px] text-gray-500 shrink-0">{d?.label}</span>
                             {origPrice != null && flashPrice < origPrice && (

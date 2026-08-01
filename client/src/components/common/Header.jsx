@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { productAPI } from '../../api';
 import { Search, KeyRound, LogIn, LayoutDashboard, X } from 'lucide-react';
 
 /**
  * Header — logo (left) + search bar (center) + login button (right).
  * Search navigates to `/?q=...` so it works from any page.
+ * The search placeholder auto-types real mod names (typewriter effect).
  */
 export default function Header() {
   const location = useLocation();
@@ -14,9 +16,62 @@ export default function Header() {
 
   const q = new URLSearchParams(location.search).get('q') || '';
   const [query, setQuery] = useState(q);
+  const [focused, setFocused] = useState(false);
+
+  // Real mod names for the animated placeholder
+  const [suggestions, setSuggestions] = useState([]);
+  const [placeholder, setPlaceholder] = useState('Search mods...');
 
   // Keep the input in sync when navigating (back/forward, filters, etc.)
   useEffect(() => { setQuery(q); }, [q]);
+
+  // Load mod names once
+  useEffect(() => {
+    productAPI.getAll({ active: 'true', limit: '50' })
+      .then((res) => {
+        const titles = (res.data || []).map((p) => p.title).filter(Boolean).slice(0, 10);
+        setSuggestions(titles);
+      })
+      .catch(() => {});
+  }, []);
+
+  // ─── Typewriter placeholder: types each mod name, erases, next ───
+  useEffect(() => {
+    const words = suggestions;
+    if (!words.length) { setPlaceholder('Search mods...'); return; }
+
+    let wordIdx = 0;
+    let charIdx = 0;
+    let deleting = false;
+    let timer;
+
+    const tick = () => {
+      const word = words[wordIdx % words.length];
+      if (!deleting) {
+        charIdx++;
+        setPlaceholder(word.slice(0, charIdx));
+        if (charIdx === word.length) {
+          deleting = true;
+          timer = setTimeout(tick, 1800); // hold full word
+          return;
+        }
+        timer = setTimeout(tick, 110); // typing speed
+      } else {
+        charIdx--;
+        setPlaceholder(word.slice(0, charIdx));
+        if (charIdx === 0) {
+          deleting = false;
+          wordIdx++;
+          timer = setTimeout(tick, 500); // pause before next word
+          return;
+        }
+        timer = setTimeout(tick, 40); // erase speed
+      }
+    };
+
+    timer = setTimeout(tick, 900);
+    return () => clearTimeout(timer);
+  }, [suggestions]);
 
   if (location.pathname.startsWith('/admin')) return null;
 
@@ -38,14 +93,16 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* ─── Center: search bar ─── */}
+          {/* ─── Center: search bar (animated placeholder) ─── */}
           <form onSubmit={handleSearch} className="flex-1 min-w-0 max-w-xl mx-auto relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search mods..."
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder={!focused && !query ? placeholder : 'Search mods...'}
               className="w-full bg-[#0d0d1a]/80 border border-[#1e1e2e]/60 rounded-xl pl-9 pr-8 py-2 sm:py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all"
             />
             {query && (
