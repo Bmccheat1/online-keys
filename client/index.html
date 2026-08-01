@@ -16,6 +16,13 @@
   </head>
   <body class="bg-dark-900 text-white">
     <div id="root"></div>
+    <!--
+      QuickGateway Embed SDK — loaded as a LINK (not copied code) so it
+      auto-updates whenever the gateway publishes a new version.
+      Exposes window.QuickGateway.{ showCheckout, checkout, close }.
+      apiBase is configured at runtime in CheckoutTrigger (→ our proxy).
+    -->
+    <script src="https://quickgateway.in/sdk/quickgateway.js" defer></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

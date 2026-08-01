@@ -7,54 +7,20 @@
  * without needing the customer's browser to be open.
  * 
  * Webhook URL (set in QuickGateway Dashboard → Settings → Callback URL):
- *   https://YOUR_DOMAIN.com/api/webhooks/quickgateway
+ *   https://store.loader-key.com/api/webhooks/quickgateway
  * 
  * Gateway sends:
  *   POST with JSON body: { trxId, paymentId, amount, status, utr, method, ... }
- *   Headers: X-Webhook-Signature, X-Webhook-Nonce, X-Webhook-Timestamp
  * 
- * 🔒 SECURITY: If the gateway sends an X-Webhook-Signature header, it is
- * verified (HMAC-SHA256) and the request is rejected on mismatch. If the
- * gateway sends NO signature (QuickGateway has no webhook-secret field),
- * the webhook is still processed — real trust comes from the
- * server-to-server `verifyPayment` call against the gateway API below,
- * which an attacker cannot forge. The webhook secret comes from:
- *   1. WEBHOOK_SECRET environment variable, or
- *   2. the `webhook_secret` setting (Admin → Settings page), or
- *   3. the gateway merchant token as a last-resort fallback.
+ * 🔒 SECURITY: No signature/secret verification here — the user chose a plain
+ * URL (no secret). That is SAFE because the real trust boundary is the
+ * server-to-server `verifyPayment` call against the gateway API below: a
+ * forged webhook can never deliver a key, because the gateway itself must
+ * confirm the payment actually exists and is paid.
  */
 
-const crypto = require('crypto');
 const { Order, Key, Product, Setting, Coupon } = require('../models');
 const { verifyPayment, getGatewayConfig } = require('../utils/quickGateway');
-
-/** Constant-time string comparison (prevents timing attacks) */
-function safeEqual(a, b) {
-  const ba = Buffer.from(String(a));
-  const bb = Buffer.from(String(b));
-  if (ba.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ba, bb);
-}
-
-/**
- * Verify the HMAC-SHA256 webhook signature.
- * Tries the common canonical strings: nonce+timestamp+body, timestamp+nonce+body, raw body.
- * Accepts both hex and base64 encoded signatures.
- */
-function verifySignature(req, secret) {
-  const signature = req.headers['x-webhook-signature'];
-  if (!signature) return false;
-  const nonce = req.headers['x-webhook-nonce'] || '';
-  const timestamp = req.headers['x-webhook-timestamp'] || '';
-  const body = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body || {});
-
-  const candidates = [`${nonce}${timestamp}${body}`, `${timestamp}${nonce}${body}`, body];
-  return candidates.some((msg) => {
-    const hex = crypto.createHmac('sha256', secret).update(msg).digest('hex');
-    const base64 = crypto.createHmac('sha256', secret).update(msg).digest('base64');
-    return safeEqual(signature, hex) || safeEqual(signature, base64);
-  });
-}
 
 /** Flash sale check — respects BOTH startAt and endAt window */
 function isFlashActive(duration) {
@@ -67,47 +33,23 @@ function isFlashActive(duration) {
 
 /**
  * POST /api/webhooks/quickgateway
- * Called by QuickGateway when payment status changes
+ * Called by QuickGateway when payment status changes (plain URL, no secret)
  */
 const quickgatewayWebhook = async (req, res) => {
   try {
     const body = req.body;
     const paymentId = body.paymentId || body.payment_id || '';
     const trxId = body.trxId || body.trx_id || '';
-    const status = (body.status || '').toUpperCase();
+    const status = String(body.status || body.paymentStatus || '').toUpperCase();
     const utr = body.utr || '';
     const method = body.method || '';
     const amount = Number(body.amount) || 0;
 
+    // Success statuses — defensive: gateway may send text or numeric forms
+    const isSuccessStatus = ['SUCCESS', 'CAPTURED', 'PAID', 'COMPLETED', '1'].includes(status);
+    const isFailureStatus = ['FAILED', 'FAILURE', 'EXPIRED', 'REVERSED', 'REJECTED', '-1'].includes(status);
+
     console.log(`[Webhook] Received: paymentId=${paymentId}, status=${status}, trxId=${trxId}`);
-
-    // ─── 0. 🔒 Signature verification (conditional) ────────────
-    // QuickGateway has NO webhook-secret field, so it typically sends no
-    // signature header at all. When a signature IS present we verify it
-    // (HMAC-SHA256) and reject on mismatch. When absent we still proceed —
-    // the real security boundary is the server-to-server `verifyPayment`
-    // call against the gateway API below, which cannot be forged.
-    const webhookSetting = await Setting.findOne({ key: 'webhook_secret' }).lean();
-    const gatewaySetting = await Setting.findOne({ key: 'payment_gateway' }).lean();
-    const gatewayConfig = getGatewayConfig(gatewaySetting?.value);
-    const webhookSecret =
-      (process.env.WEBHOOK_SECRET || '').trim() ||
-      (webhookSetting?.value && String(webhookSetting.value).trim()) ||
-      gatewayConfig.merchantToken;
-
-    const signature = req.headers['x-webhook-signature'];
-    if (signature) {
-      if (!webhookSecret) {
-        console.log('[Webhook] ❌ Signature present but no secret configured — rejecting');
-        return res.status(401).json({ success: false, message: 'Webhook signature present but no secret configured.' });
-      }
-      if (!verifySignature(req, webhookSecret)) {
-        console.log('[Webhook] ❌ Invalid signature — rejecting');
-        return res.status(401).json({ success: false, message: 'Invalid webhook signature' });
-      }
-    } else {
-      console.log('[Webhook] ℹ️ No signature header (gateway has no webhook secret) — relying on server-to-server verification');
-    }
 
     // ─── Validate ────────────────────────────────────────────
     if (!paymentId) {
@@ -135,8 +77,11 @@ const quickgatewayWebhook = async (req, res) => {
     }
 
     // ─── Payment Success Flow ────────────────────────────────
-    if (status === 'SUCCESS' || status === 'CAPTURED') {
+    if (isSuccessStatus) {
       // 1. Verify payment with QuickGateway API (server-to-server)
+      //    — this is the real trust boundary (no signature needed)
+      const settings = await Setting.findOne({ key: 'payment_gateway' }).lean();
+      const gatewayConfig = getGatewayConfig(settings?.value);
       const verification = await verifyPayment(paymentId, gatewayConfig.merchantToken);
       if (!verification.success) {
         console.log(`[Webhook] Payment verification FAILED for ${paymentId}`);
@@ -150,16 +95,21 @@ const quickgatewayWebhook = async (req, res) => {
       key.reservedAt = null;
       key.reservationExpiresAt = null;
 
-      // 3. Create order — flash sale + coupon were locked at initiate time
+      // 3. Create order — amount was LOCKED at initiate time (key.reservedAmount)
       const product = key.productId;
       const duration = product?.durations?.find(
         (d) => d.value === durationValue && d.unit === durationUnit
       );
 
-      const flashActive = isFlashActive(duration);
-      const baseAmount = flashActive ? duration.flashSale.flashPrice : (duration?.price || amount);
+      // 💰 Prefer the amount locked at initiate (flash/coupon changes must not
+      //    break the order); fall back to recompute for legacy reservations.
+      const fallbackAmount = duration
+        ? (isFlashActive(duration) ? duration.flashSale.flashPrice : duration.price)
+        : amount;
       const discountAmount = key.discountAmount || 0;
-      const paidAmount = Math.max(0, baseAmount - discountAmount);
+      const paidAmount = key.reservedAmount != null
+        ? key.reservedAmount
+        : Math.max(0, fallbackAmount - discountAmount);
 
       const order = await Order.create({
         userId: null,
@@ -206,7 +156,7 @@ const quickgatewayWebhook = async (req, res) => {
     }
 
     // ─── Payment Failed Flow ─────────────────────────────────
-    if (status === 'FAILED' || status === 'FAILURE' || status === 'EXPIRED' || status === 'REVERSED') {
+    if (isFailureStatus) {
       // Release the key back to available pool (and clear coupon info)
       key.status = 'available';
       key.paymentId = null;
