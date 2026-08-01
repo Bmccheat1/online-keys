@@ -24,6 +24,10 @@ const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
+// Trust the first proxy hop (Vercel edge) — required for express-rate-limit
+// to read the real client IP from X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Connect to MongoDB (with serverless caching)
 connectDB();
 
