@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { productAPI } from '../api';
-import {
-  ShieldCheck, Zap, BadgeCheck, Search, ShoppingBag, Package, Flame, X,
-  ArrowRight, Smartphone, ChevronLeft, ChevronRight, Clock
-} from 'lucide-react';
+import SiteFooter from '../components/common/SiteFooter';
+import { Search, Package, Flame, X, ArrowRight, Smartphone } from 'lucide-react';
 
 /* ─── Deterministic gradient per mod card ─── */
 const cardGradients = [
@@ -70,13 +68,12 @@ function Countdown({ endAt, className = '' }) {
   return <span className={`font-mono tabular-nums ${className}`}>{h}:{m}:{s}</span>;
 }
 
-/* ─── Home — professional storefront: flash slider + filters + catalog ─── */
+/* ─── Home — minimal hero + flash marquee + filters + catalog ─── */
 export default function Home() {
   const [mods, setMods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const [slide, setSlide] = useState(0);
 
   useEffect(() => {
     productAPI.getAll({ active: 'true', limit: '50' }).then((res) => {
@@ -85,13 +82,6 @@ export default function Home() {
   }, []);
 
   const flashMods = mods.filter((m) => m.durations?.some(isDurFlashActive));
-
-  // Auto-rotate flash slider every 4s
-  useEffect(() => {
-    if (flashMods.length < 2) return;
-    const t = setInterval(() => setSlide((s) => (s + 1) % flashMods.length), 4000);
-    return () => clearInterval(t);
-  }, [flashMods.length]);
 
   const categories = [...new Set(mods.map((m) => m.category).filter(Boolean))];
   const chips = [
@@ -128,38 +118,14 @@ export default function Home() {
     <div className="min-h-screen flex flex-col relative">
       <Bg />
       <main className="flex-1 px-3 sm:px-5 pt-14 sm:pt-16 md:pt-20">
-        <div className="w-full max-w-6xl mx-auto animate-fade-up pb-10">
+        <div className="w-full max-w-6xl mx-auto animate-fade-up pb-8">
 
-          {/* ─── Hero ─── */}
-          <div className="text-center mb-5 sm:mb-6">
-            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1 mb-3">
-              <ShoppingBag className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-400" />
-              <span className="text-[10px] md:text-xs text-amber-400 font-medium tracking-wide">Digital Keys Store · Instant Delivery</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white font-display leading-tight">
+          {/* ─── Minimal hero: small heading + search only ─── */}
+          <div className="mb-5 sm:mb-6">
+            <h1 className="text-base sm:text-xl font-bold text-white font-display text-center mb-3">
               Purchase <span className="text-gradient">License Keys</span>
             </h1>
-            <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 mt-2">Browse mods, pick your duration & pay via UPI — key delivered instantly</p>
-
-            {/* Trust stats */}
-            <div className="flex items-center justify-center gap-3 sm:gap-6 mt-4 flex-wrap">
-              <span className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-500">
-                <BadgeCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <b className="text-white text-xs sm:text-sm font-display">25K+</b> Keys Delivered
-              </span>
-              <span className="text-gray-800 hidden sm:inline">•</span>
-              <span className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-500">
-                <span className="text-amber-400 text-xs sm:text-sm">★ 4.9</span> Customer Rating
-              </span>
-              <span className="text-gray-800 hidden sm:inline">•</span>
-              <span className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-500">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <b className="text-white text-xs sm:text-sm font-display">30 Sec</b> Delivery
-              </span>
-            </div>
-
-            {/* Search bar */}
-            <div className="relative max-w-md mx-auto mt-4 sm:mt-5">
+            <div className="relative max-w-md mx-auto">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
               <input
                 type="text"
@@ -176,88 +142,44 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ─── Flash Sale Slider (auto-rotating) ─── */}
+          {/* ─── Flash Deals — auto-scrolling marquee (only when a flash deal is ON) ─── */}
           {flashMods.length > 0 && (
-            <div className="relative mb-6 sm:mb-7 animate-fade-in">
-              <div className="rounded-2xl overflow-hidden border border-amber-500/25 shadow-gold">
-                <div className="flex transition-transform duration-700 ease-out" style={{ transform: `translateX(-${slide * 100}%)` }}>
-                  {flashMods.map((m) => {
-                    const d = m.durations.find(isDurFlashActive);
-                    const flashPrice = d?.flashSale?.flashPrice ?? d?.price;
-                    const origPrice = d?.price;
-                    const grad = cardGradients[((m.title || '').length) % cardGradients.length];
-                    return (
-                      <div key={m._id} className="w-full flex-shrink-0">
-                        <div className="relative bg-gradient-to-r from-[#0d0d1a] via-[#141422] to-[#0a0a14] p-4 sm:p-5">
-                          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, rgba(245,158,11,0.4) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-                          <div className="relative flex items-center gap-3 sm:gap-5 w-full">
-                            <ModImage
-                              image={m.image}
-                              title={m.title}
-                              letter={m.title?.charAt(0)?.toUpperCase() || 'M'}
-                              grad={`bg-gradient-to-br ${grad}`}
-                              className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl"
-                            />
-                            <div className="min-w-0 flex-1 text-center sm:text-left">
-                              <span className="inline-flex items-center gap-1 chip chip-amber !text-[9px] sm:!text-[10px] !px-2 !py-0.5 mb-1.5 animate-pulse-glow">
-                                <Flame className="w-3 h-3" /> Flash Sale
-                              </span>
-                              <p className="text-sm sm:text-lg font-bold text-white font-display truncate">{m.title}</p>
-                              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 flex items-center justify-center sm:justify-start gap-1.5">
-                                <Clock className="w-3 h-3 text-amber-400" /> Ends in{' '}
-                                <Countdown endAt={d?.flashSale?.endAt} className="text-amber-300 text-[10px] sm:text-xs" />
-                              </p>
-                            </div>
-                            <div className="text-center sm:text-right flex-shrink-0">
-                              {origPrice != null && flashPrice < origPrice && (
-                                <p className="text-[10px] sm:text-xs text-gray-600 line-through">₹{origPrice.toLocaleString()}</p>
-                              )}
-                              <p className="text-lg sm:text-2xl font-bold text-gradient leading-tight">₹{(flashPrice || 0).toLocaleString()}</p>
-                              <Link
-                                to={`/product/${m._id}`}
-                                className="mt-1.5 inline-flex items-center gap-1.5 btn btn-gold !py-1.5 !px-3.5 !text-[11px] sm:!text-xs"
-                              >
-                                Shop Now <ArrowRight className="w-3 h-3" />
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="relative mb-5 overflow-hidden rounded-xl border border-amber-500/20 bg-[#0c0c18]/90 py-2 animate-fade-in">
+              <div className="flex w-max animate-[flash-marquee_30s_linear_infinite] hover:[animation-play-state:paused]">
+                {[0, 1].map((half) => (
+                  <div key={half} className="flex gap-2 pr-2" aria-hidden={half === 1}>
+                    {flashMods.map((m) => {
+                      const d = m.durations.find(isDurFlashActive);
+                      const flashPrice = d?.flashSale?.flashPrice ?? d?.price;
+                      const origPrice = d?.price;
+                      return (
+                        <Link
+                          key={`${half}-${m._id}`}
+                          to={`/product/${m._id}`}
+                          className="group flex items-center gap-2 shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors pl-1.5 pr-3 py-1.5"
+                        >
+                          <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                            <Flame className="w-3 h-3 text-amber-400" />
+                          </span>
+                          <span className="text-[10px] sm:text-[11px] text-white font-semibold truncate max-w-[90px] sm:max-w-[160px]">{m.title}</span>
+                          <span className="text-[9px] text-gray-500 shrink-0">{d?.label}</span>
+                          {origPrice != null && flashPrice < origPrice && (
+                            <span className="text-[9px] text-gray-600 line-through shrink-0">₹{origPrice.toLocaleString()}</span>
+                          )}
+                          <span className="text-[11px] font-bold text-amber-400 shrink-0">₹{(flashPrice || 0).toLocaleString()}</span>
+                          <span className="hidden sm:inline text-[9px] font-mono text-amber-300/80 shrink-0">
+                            <Countdown endAt={d?.flashSale?.endAt} />
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 transition-colors shrink-0" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-
-              {/* Arrows */}
-              {flashMods.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setSlide((flashMods.length + slide - 1) % flashMods.length)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-black/50 backdrop-blur border border-white/10 text-gray-300 hover:text-amber-400 hover:border-amber-500/40 transition-all z-10"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setSlide((slide + 1) % flashMods.length)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-black/50 backdrop-blur border border-white/10 text-gray-300 hover:text-amber-400 hover:border-amber-500/40 transition-all z-10"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </>
-              )}
-
-              {/* Dots */}
-              {flashMods.length > 1 && (
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                  {flashMods.map((m, i) => (
-                    <button
-                      key={m._id}
-                      onClick={() => setSlide(i)}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${i === slide ? 'w-5 bg-amber-400' : 'w-1.5 bg-white/20 hover:bg-white/40'}`}
-                    />
-                  ))}
-                </div>
-              )}
+              {/* Fade edges */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#080812] to-transparent z-10" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#080812] to-transparent z-10" />
             </div>
           )}
 
@@ -293,39 +215,32 @@ export default function Home() {
                 const inStock = (mod.totalAvailableKeys ?? null) === null ? true : mod.totalAvailableKeys > 0;
                 const grad = cardGradients[i % cardGradients.length];
                 const pf = mod.platform || 'both';
+                const platformClass = pf === 'android'
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                  : pf === 'ios'
+                    ? 'bg-sky-500/15 border-sky-500/40 text-sky-300'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300';
                 return (
                   <Link
                     key={mod._id}
                     to={`/product/${mod._id}`}
                     className="panel panel-hover group block relative overflow-hidden transition-all duration-300 animate-fade-in !p-2 sm:!p-4"
                   >
-                    {/* Top-left: platform tag */}
-                    {pf && (
-                      <span className={`absolute top-2 left-2 z-10 inline-flex items-center gap-1 chip !text-[8px] sm:!text-[9px] !px-1.5 !py-0.5
-                        ${pf === 'android'
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                          : pf === 'ios'
-                            ? 'bg-sky-500/15 border-sky-500/40 text-sky-300'
-                            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}
-                      >
-                        <Smartphone className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
-                        {pf === 'both' ? 'Android/iOS' : pf === 'android' ? 'Android' : 'iOS'}
-                      </span>
-                    )}
-
-                    {/* Top-right: Flash + Best Seller badges */}
-                    <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
+                    {/* Top-right: Flash + Best Seller badges (icon-only on mobile to avoid overlap) */}
+                    <div className="absolute top-1.5 right-1.5 z-10 flex flex-col items-end gap-1">
                       {hasFlash && (
-                        <span className="chip chip-amber !text-[8px] sm:!text-[9px] !px-1.5 !py-0.5 animate-pulse-glow">
-                          <Flame className="w-2 h-2 sm:w-2.5 sm:h-2.5" /> Flash
+                        <span className="chip chip-amber !text-[8px] sm:!text-[9px] !px-1 sm:!px-1.5 !py-0.5 animate-pulse-glow">
+                          <Flame className="w-2 h-2 sm:w-2.5 sm:h-2.5" /><span className="hidden sm:inline"> Flash</span>
                         </span>
                       )}
                       {mod.isBestSeller && (
-                        <span className="chip bg-gradient-to-r from-amber-500 to-yellow-500 !text-[8px] sm:!text-[9px] !px-1.5 !py-0.5 text-[#0a0a14] font-bold">★ Best Seller</span>
+                        <span className="chip bg-gradient-to-r from-amber-500 to-yellow-500 !text-[8px] sm:!text-[9px] !px-1 sm:!px-1.5 !py-0.5 text-[#0a0a14] font-bold">
+                          <span className="sm:hidden">★</span><span className="hidden sm:inline">★ Best Seller</span>
+                        </span>
                       )}
                     </div>
 
-                    {/* Image / icon tile */}
+                    {/* Image on top + platform tag (no overlap), name below */}
                     {mod.image ? (
                       <div className="relative h-20 sm:h-36 rounded-lg sm:rounded-xl overflow-hidden mb-1.5 sm:mb-3 bg-[#0a0a14] border border-[#1e1e2e]/60">
                         <ModImage
@@ -335,15 +250,31 @@ export default function Home() {
                           grad={`bg-gradient-to-br ${grad}`}
                           className="w-full h-full group-hover:scale-105 transition-transform duration-300"
                         />
+                        {pf && (
+                          <span className={`absolute top-1.5 left-1.5 z-10 inline-flex items-center gap-1 chip !text-[8px] sm:!text-[9px] !px-1 sm:!px-1.5 !py-0.5 ${platformClass}`}>
+                            <Smartphone className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
+                            <span className="sm:hidden">{pf === 'both' ? 'Both' : pf === 'android' ? 'Android' : 'iOS'}</span>
+                            <span className="hidden sm:inline">{pf === 'both' ? 'Android/iOS' : pf === 'android' ? 'Android' : 'iOS'}</span>
+                          </span>
+                        )}
                       </div>
                     ) : (
-                      <ModImage
-                        image={null}
-                        title={mod.title}
-                        letter={mod.title?.charAt(0)?.toUpperCase() || 'M'}
-                        grad={`bg-gradient-to-br ${grad}`}
-                        className="w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl mb-1.5 sm:mb-3 group-hover:scale-105 transition-transform duration-200"
-                      />
+                      <div className="flex items-start justify-between gap-1 mb-1.5 sm:mb-3">
+                        <ModImage
+                          image={null}
+                          title={mod.title}
+                          letter={mod.title?.charAt(0)?.toUpperCase() || 'M'}
+                          grad={`bg-gradient-to-br ${grad}`}
+                          className="w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl group-hover:scale-105 transition-transform duration-200"
+                        />
+                        {pf && (
+                          <span className={`inline-flex items-center gap-1 chip !text-[8px] sm:!text-[9px] !px-1 sm:!px-1.5 !py-0.5 ${platformClass}`}>
+                            <Smartphone className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
+                            <span className="sm:hidden">{pf === 'both' ? 'Both' : pf === 'android' ? 'Android' : 'iOS'}</span>
+                            <span className="hidden sm:inline">{pf === 'both' ? 'Android/iOS' : pf === 'android' ? 'Android' : 'iOS'}</span>
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     <h3 className="font-semibold text-white text-[11px] sm:text-[15px] font-display truncate group-hover:text-amber-400 transition-colors leading-snug">
@@ -374,21 +305,9 @@ export default function Home() {
               })}
             </div>
           )}
-
-          {/* Trust row */}
-          <div className="mt-6 pt-4 border-t border-[#1e1e2e]/40 flex items-center justify-center gap-3 text-[10px] text-gray-500 flex-wrap">
-            <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Secure</span>
-            <span className="text-gray-800">•</span>
-            <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-amber-400" /> Instant Delivery</span>
-            <span className="text-gray-800">•</span>
-            <span className="flex items-center gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-emerald-400" /> UPI Verified</span>
-          </div>
-
-          <p className="text-center text-[10px] text-gray-700 mt-5">
-            © {new Date().getFullYear()} Online Keys — Digital license key store
-          </p>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

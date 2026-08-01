@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { productAPI } from '../../api';
+import api, { productAPI } from '../../api';
 import Loader from '../../components/common/Loader';
-import { Package, Plus, X, ArrowLeft, Sparkles } from 'lucide-react';
+import { Package, Plus, X, ArrowLeft, Sparkles, UploadCloud, Trash2 } from 'lucide-react';
 
 const emptyDuration = { label: '', value: 1, unit: 'hours', price: 0, flashSale: { isActive: false, flashPrice: null, startAt: null, endAt: null } };
 
@@ -13,6 +13,7 @@ export default function AddMod() {
   const isEdit = Boolean(id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', image: '', platform: 'both', category: '', isBestSeller: false, durations: [{ ...emptyDuration }] });
 
   useEffect(() => {
@@ -49,6 +50,30 @@ export default function AddMod() {
     setForm({ ...form, durations: form.durations.filter((_, i) => i !== index) });
   };
 
+  // Upload product image directly to the server
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); e.target.value = ''; return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await api.post('/upload', fd);
+      if (res.data?.success) {
+        setForm((f) => ({ ...f, image: res.data.url }));
+        toast.success('Image uploaded!');
+      } else {
+        toast.error(res.data?.message || 'Upload failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed — is the server running?');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const generateLabel = (d) => {
     if (d.label) return d.label;
     const unitLabel = d.unit === 'hours' ? (d.value === 1 ? 'Hour' : 'Hours') : (d.value === 1 ? 'Day' : 'Days');
@@ -59,6 +84,8 @@ export default function AddMod() {
     e.preventDefault();
     if (!form.title.trim()) { toast.error('Mod title is required'); return; }
     if (form.durations.some((d) => d.price <= 0)) { toast.error('All durations must have a price > 0'); return; }
+    const badFlash = form.durations.find((d) => d.flashSale?.isActive && (d.flashSale?.flashPrice == null || d.flashSale?.flashPrice <= 0 || !d.flashSale?.endAt));
+    if (badFlash) { toast.error('Flash sale needs BOTH a flash price and an end time — set them on the duration marked FLASH'); return; }
     const submitData = {
       ...form,
       durations: form.durations.map(d => ({ ...d, label: generateLabel(d) })),
@@ -102,11 +129,42 @@ export default function AddMod() {
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field" rows="3" placeholder="Mod description..." />
           </div>
           <div>
-            <label className="field">
-              Image URL <span className="text-gray-600 font-normal text-xs">(optional — shown on the store cards)</span>
-            </label>
-            <div className="flex items-start gap-3">
-              <div className="flex-1">
+            <label className="field">Product Image <span className="text-gray-600 font-normal text-xs">(optional)</span></label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Upload from device */}
+              <div className="w-full sm:w-44 flex-shrink-0">
+                <input
+                  type="file"
+                  id="mod-image-upload"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="mod-image-upload"
+                  className={`flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed cursor-pointer transition-all text-center px-2
+                    ${uploading
+                      ? 'border-amber-500/40 opacity-60 pointer-events-none'
+                      : 'border-[#1e1e2e] hover:border-amber-500/50 hover:bg-amber-500/5'}`}
+                >
+                  {uploading ? (
+                    <>
+                      <span className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-amber-400 mt-2">Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-6 h-6 text-gray-500" />
+                      <span className="text-xs text-gray-400 mt-2">Upload from device</span>
+                      <span className="text-[9px] text-gray-600 mt-0.5">JPG / PNG / WebP · max 5MB</span>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Or paste URL */}
+              <div className="flex-1 min-w-0">
                 <input
                   type="url"
                   value={form.image}
@@ -114,18 +172,27 @@ export default function AddMod() {
                   className="input-field font-mono"
                   placeholder="https://example.com/product.jpg"
                 />
-                <p className="text-xs text-gray-600 mt-1">Paste a direct image link (JPG/PNG/WebP). Leave empty to use the auto icon.</p>
+                <p className="text-xs text-gray-600 mt-1">Upload from your phone/PC, or paste an image link. Leave empty for the auto icon.</p>
+                {form.image && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#1e1e2e] bg-[#0a0a14] flex-shrink-0">
+                      <img
+                        src={form.image}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, image: '' })}
+                      className="inline-flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove image
+                    </button>
+                  </div>
+                )}
               </div>
-              {form.image && (
-                <div className="w-20 h-20 rounded-xl overflow-hidden border border-[#1e1e2e] bg-[#0a0a14] flex-shrink-0">
-                  <img
-                    src={form.image}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                </div>
-              )}
             </div>
           </div>
         </div>

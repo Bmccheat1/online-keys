@@ -90,7 +90,10 @@ export default function CheckoutTrigger({
   return (
     <>
       {children ? (
-        <span onClick={handlePay} className={loading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}>
+        <span
+          onClick={handlePay}
+          className={`inline-flex w-full ${loading ? 'pointer-events-none opacity-60' : ''} ${disabled ? 'pointer-events-none cursor-not-allowed opacity-50 select-none' : 'cursor-pointer'}`}
+        >
           {children}
         </span>
       ) : (

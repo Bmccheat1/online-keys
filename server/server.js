@@ -3,6 +3,7 @@ const cors = require('cors');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const path = require('path');
 const env = require('./config/env');
 const connectDB = require('./config/db');
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
@@ -19,6 +20,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const quickgatewayProxyRoutes = require('./routes/quickgatewayProxy');
 const webhookRoutes = require('./routes/webhookRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
@@ -41,6 +43,9 @@ app.use(express.json({
   verify: (req, res, buf) => { req.rawBody = buf; },
 }));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded images (stored in /uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Webhooks — MUST be before rate limiter (gateway retries are normal)
 app.use('/api/webhooks', webhookRoutes);
@@ -84,6 +89,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/quickgateway-proxy', quickgatewayProxyRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // ─── Error Handling ─────────────────────────────────────
 app.use(notFound);

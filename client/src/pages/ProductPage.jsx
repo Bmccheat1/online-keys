@@ -5,6 +5,7 @@ import { productAPI, orderAPI, couponAPI } from '../api';
 import { quickGatewayAPI } from '../utils/quickgateway';
 import CheckoutTrigger from '../components/checkout/CheckoutTrigger';
 import Loader from '../components/common/Loader';
+import SiteFooter from '../components/common/SiteFooter';
 import {
   ArrowLeft, Zap, ArrowRight, Tag, Percent, Clock, Flame, BadgeCheck,
   Copy, Check, KeyRound, ShieldCheck, Sparkles, ShoppingBag, Package
@@ -273,9 +274,9 @@ export default function ProductPage() {
   const inStock = (product.totalAvailableKeys ?? null) === null ? true : product.totalAvailableKeys > 0;
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen flex flex-col relative">
       <Bg />
-      <main className="px-3 sm:px-5 pt-14 sm:pt-16 md:pt-20 pb-10">
+      <main className="flex-1 px-3 sm:px-5 pt-14 sm:pt-16 md:pt-20 pb-32 lg:pb-8">
         <div className="w-full max-w-6xl mx-auto animate-fade-up">
 
           {/* Back */}
@@ -376,6 +377,17 @@ export default function ProductPage() {
                     );
                   })}
                 </div>
+
+                {/* Hint: flash prices exist on other durations */}
+                {product.durations?.some(isDurFlashActive) && !isFlashActive && (
+                  <div className="mt-3 flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-3.5 py-2.5 animate-fade-in">
+                    <Flame className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                      <b className="text-amber-300">Flash prices available</b> on some durations — select the{' '}
+                      <b className="text-amber-300">FLASH</b>-tagged option to get the discount.
+                    </p>
+                  </div>
+                )}
 
                 {/* Flash sale banner */}
                 {isFlashActive && (
@@ -515,6 +527,49 @@ export default function ProductPage() {
           </div>
         </div>
       </main>
+
+      {/* ─── Mobile sticky pay bar — disabled until a duration is selected ─── */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[#1e1e2e]/60 bg-[#0a0a14]/95 backdrop-blur-xl px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] animate-fade-up">
+        <div className="flex items-center gap-3 max-w-6xl mx-auto">
+          <div className="min-w-0 flex-1">
+            {selectedDuration ? (
+              <>
+                <p className="text-[9px] text-gray-500 uppercase tracking-wider truncate">{product.title} · {selectedDuration.value} {selectedDuration.unit}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {isFlashActive && <span className="chip chip-amber !text-[8px] !py-0.5"><Flame className="w-2 h-2" /> Flash</span>}
+                  {appliedCoupon && <span className="chip chip-green !text-[8px] !py-0.5"><Percent className="w-2 h-2" /> {appliedCoupon.code}</span>}
+                  <p className="text-lg font-bold text-gradient leading-none">₹{(discountedPrice || 0).toLocaleString()}</p>
+                  {isFlashActive && effectivePrice != null && (
+                    <span className="text-[10px] text-gray-600 line-through">₹{effectivePrice.toLocaleString()}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-gray-500">Select a duration to continue</p>
+            )}
+          </div>
+          <CheckoutTrigger
+            disabled={!selectedDuration || !inStock}
+            initiate={handleInitiate}
+            complete={handleComplete}
+            release={handleRelease}
+            label={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
+            noDurationLabel="Select Duration"
+            soldOutLabel="Sold Out"
+          >
+            <span className="inline-flex items-center justify-center gap-2 btn-gold !py-3 !px-6 !text-sm shrink-0">
+              {!selectedDuration || !inStock
+                ? (inStock ? <Clock className="w-4 h-4" /> : <Package className="w-4 h-4" />)
+                : <Sparkles className="w-4 h-4" />}
+              {!selectedDuration || !inStock
+                ? (inStock ? 'Select Duration' : 'Sold Out')
+                : `Pay ₹${(discountedPrice || 0).toLocaleString()}`}
+            </span>
+          </CheckoutTrigger>
+        </div>
+      </div>
+
+      <SiteFooter />
     </div>
   );
 }
