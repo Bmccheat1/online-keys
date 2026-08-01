@@ -8,7 +8,8 @@ import Loader from '../components/common/Loader';
 import SiteFooter from '../components/common/SiteFooter';
 import {
   ArrowLeft, Zap, ArrowRight, Tag, Percent, Clock, Flame, BadgeCheck,
-  Copy, Check, KeyRound, ShieldCheck, Sparkles, ShoppingBag, Package
+  Copy, Check, KeyRound, ShieldCheck, Sparkles, ShoppingBag, Package,
+  CalendarDays
 } from 'lucide-react';
 
 const cardGradients = [
@@ -107,10 +108,21 @@ function formatOrderId(id = '') {
   return (id || '').length > 12 ? id.slice(-12).toUpperCase() : id.toUpperCase();
 }
 
+/* ─── Receipt row helper (responsive: smaller on mobile, roomier on PC) ─── */
+function Row({ label, children }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs sm:text-[13px] py-1.5 sm:py-2">
+      <span className="text-gray-500 shrink-0">{label}</span>
+      <span className="text-right min-w-0 flex items-center gap-1.5 justify-end">{children}</span>
+    </div>
+  );
+}
+
 /* ─── Success view after purchase ─── */
 function SuccessView({ purchasedKey, mod, onReset }) {
   const [copied, setCopied] = useState(false);
-  const [copiedUtr, setCopiedUtr] = useState(false);
+  const [copiedOrder, setCopiedOrder] = useState(false);
+  const [copiedTxn, setCopiedTxn] = useState(false);
 
   const copy = async (text, setFlag) => {
     try {
@@ -124,74 +136,166 @@ function SuccessView({ purchasedKey, mod, onReset }) {
 
   const grad = cardGradients[(mod?.title?.length || 0) % cardGradients.length];
 
+  // ⚠️ Data mapping: server returns `amount` + `duration` (label) — the old
+  // view read `amountPaid` / `durationValue` and showed "₹undefined".
+  const amount = Number(purchasedKey.amount ?? purchasedKey.amountPaid ?? 0);
+  const discount = Number(purchasedKey.discountAmount || 0);
+  const original = amount + discount;
+  const durationLabel = purchasedKey.duration
+    || `${purchasedKey.durationValue || ''} ${purchasedKey.durationUnit || ''}`.trim()
+    || '—';
+  const date = purchasedKey.purchasedAt ? new Date(purchasedKey.purchasedAt) : null;
+  const dateStr = date ? date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+  const timeStr = date ? date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
+    <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 relative py-8 sm:py-12">
       <Bg />
-      <div className="w-full max-w-md animate-fade-up">
-        <div className="panel p-6 sm:p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
-            <BadgeCheck className="w-7 h-7 text-emerald-400" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">Purchase Successful!</h2>
-          <p className="text-xs sm:text-sm text-gray-500 mt-2">Your key has been delivered. Copy it below:</p>
+      <style>{`
+        @keyframes success-ping { 0% { transform: scale(0.85); opacity: 0.9; } 100% { transform: scale(1.55); opacity: 0; } }
+        @keyframes shine-sweep { 0% { transform: translateX(-130%) skewX(-20deg); } 100% { transform: translateX(230%) skewX(-20deg); } }
+      `}</style>
 
-          {/* Key box */}
-          <div className="mt-5 card-glass rounded-xl p-4 relative">
-            <div className="flex items-center gap-2 mb-2">
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">License Key</span>
-              <span className="chip chip-green !text-[9px] !py-0.5 ml-auto">✓ Verified</span>
-            </div>
-            <p className="font-mono text-sm sm:text-base text-white bg-black/30 border border-[#1e1e2e]/60 rounded-lg p-3 break-all text-left select-all">
-              {purchasedKey.key}
-            </p>
-            <button
-              onClick={() => copy(purchasedKey.key, setCopied)}
-              className="btn btn-gold !w-full mt-3 !py-2.5"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Copied!' : 'Copy Key'}
-            </button>
-          </div>
+      {/* max-w-sm on tiny phones → max-w-lg on PC (centered premium card) */}
+      <div className="w-full max-w-sm sm:max-w-lg animate-fade-up">
 
-          {/* Txn details */}
-          <div className="mt-3 card-glass rounded-xl p-4 text-left space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Mod</span>
-              <span className="text-white font-medium max-w-[60%] truncate">{mod?.title}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Duration</span>
-              <span className="text-white font-medium">{purchasedKey.durationValue} {purchasedKey.durationUnit}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Amount</span>
-              <span className="text-amber-400 font-semibold">₹{purchasedKey.amountPaid?.toLocaleString?.() ?? purchasedKey.amountPaid}</span>
-            </div>
-            <div className="flex justify-between text-xs items-center">
-              <span className="text-gray-500">Order ID</span>
-              <button
-                onClick={() => copy(purchasedKey.orderId || '', setCopiedUtr)}
-                className="text-gray-300 font-mono hover:text-amber-400 transition-colors flex items-center gap-1"
-              >
-                {formatOrderId(purchasedKey.orderId)} {copiedUtr ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-              </button>
-            </div>
-            {purchasedKey.transactionId && (
-              <div className="flex justify-between text-xs items-center">
-                <span className="text-gray-500">Txn / UTR</span>
-                <span className="text-gray-300 font-mono truncate max-w-[55%]">{purchasedKey.transactionId}</span>
-              </div>
-            )}
+        {/* ─── Animated success badge (scales up on PC) ─── */}
+        <div className="relative mx-auto mb-4 sm:mb-6 w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center">
+          <span className="absolute inset-0 rounded-full border-2 border-emerald-400/25" style={{ animation: 'success-ping 2.4s ease-out infinite' }} />
+          <span className="absolute inset-2 rounded-full border border-emerald-400/15" style={{ animation: 'success-ping 2.4s ease-out 0.6s infinite' }} />
+          <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.45)]">
+            <BadgeCheck className="w-8 h-8 sm:w-12 sm:h-12 text-white" strokeWidth={2.2} />
           </div>
-
-          <button onClick={onReset} className="btn btn-gold !w-full mt-4">
-            <ShoppingBag className="w-4 h-4" /> Buy Another
-          </button>
-          <Link to="/" className="block text-[11px] text-gray-600 hover:text-amber-400 transition-colors mt-3">
-            ← Back to Store
-          </Link>
         </div>
+
+        <div className="panel overflow-hidden !p-0 animate-fade-in">
+
+          {/* ─── Header strip ─── */}
+          <div className="px-4 sm:px-8 pt-5 sm:pt-8 pb-4 sm:pb-6 text-center relative border-b border-[#1e1e2e]/60 bg-gradient-to-b from-emerald-500/[0.08] via-emerald-500/[0.03] to-transparent">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold font-display bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 via-teal-200 to-emerald-400 leading-tight">
+              Payment Successful!
+            </h1>
+            <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 mt-1.5 sm:mt-2">Your license key is ready — copy it below</p>
+
+            {/* Product chip row (wraps gracefully on tiny screens) */}
+            <div className="flex items-center justify-center gap-2 mt-3 sm:mt-5 flex-wrap">
+              <ModImage
+                image={mod?.image}
+                title={mod?.title || 'Key'}
+                letter={mod?.title?.charAt(0)?.toUpperCase() || 'K'}
+                grad={`bg-gradient-to-br ${grad}`}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl border border-white/10 shadow-lg"
+              />
+              <span className="text-sm sm:text-base font-semibold text-white truncate max-w-[50%] sm:max-w-[60%]">{mod?.title || purchasedKey.product}</span>
+              <span className="chip chip-amber !text-[9px] sm:!text-[10px] !px-2 !py-0.5 shrink-0">{durationLabel}</span>
+            </div>
+          </div>
+
+          {/* ─── Key box (gradient border) ─── */}
+          <div className="px-3 sm:px-6 pt-4 sm:pt-6">
+            <div className="rounded-xl sm:rounded-2xl p-[1.5px] bg-gradient-to-r from-amber-500/70 via-amber-400/30 to-amber-500/70 relative overflow-hidden">
+              <div className="rounded-xl sm:rounded-2xl bg-[#0a0a14]/95 p-3.5 sm:p-5">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                  <span className="text-[9px] sm:text-[10px] font-bold text-amber-400 uppercase tracking-widest">License Key</span>
+                  <span className="chip chip-green !text-[8px] sm:!text-[9px] !py-0.5 ml-auto">✓ Delivered</span>
+                </div>
+                <p className="font-mono text-[13px] sm:text-[15px] md:text-base text-white bg-black/40 border border-[#1e1e2e]/70 rounded-lg sm:rounded-xl p-3 sm:p-3.5 break-all text-left select-all tracking-wide leading-relaxed">
+                  {purchasedKey.key}
+                </p>
+                <button
+                  onClick={() => copy(purchasedKey.key, setCopied)}
+                  className={`w-full mt-3 !py-2.5 sm:!py-3 font-semibold rounded-xl transition-all duration-300 active:scale-[0.97] text-xs sm:text-sm ${
+                    copied
+                      ? 'bg-emerald-500/90 hover:bg-emerald-400 text-white border border-emerald-300/30 shadow-[0_0_24px_rgba(16,185,129,0.35)]'
+                      : 'btn-gold'
+                  }`}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Key Copied!' : 'Copy Key'}
+                </button>
+              </div>
+            </div>
+            <p className="text-[9px] sm:text-[10px] text-gray-600 text-center mt-2 sm:mt-2.5 flex items-center justify-center gap-1 px-2">
+              <ShieldCheck className="w-3 h-3 text-emerald-500/70 shrink-0" />
+              Key is securely saved to your order history (Order ID below)
+            </p>
+          </div>
+
+          {/* ─── Receipt ─── */}
+          <div className="px-3 sm:px-6 pt-4 sm:pt-5">
+            <div className="rounded-xl sm:rounded-2xl border border-[#1e1e2e]/60 bg-[#050508]/60 p-3.5 sm:p-5">
+              <div className="flex items-center gap-1.5 mb-1 pb-2 border-b border-dashed border-[#1e1e2e]/60">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400/70" />
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-gray-500">Receipt</span>
+              </div>
+
+              <Row label="Mod">
+                <span className="text-white font-medium truncate max-w-[50%] sm:max-w-[60%]">{mod?.title || purchasedKey.product}</span>
+              </Row>
+              <Row label="Duration">
+                <span className="text-white font-medium">{durationLabel}</span>
+              </Row>
+              <Row label="Amount Paid">
+                <span className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+                  {discount > 0 && (
+                    <span className="text-[10px] sm:text-[11px] text-gray-600 line-through">₹{original.toLocaleString('en-IN')}</span>
+                  )}
+                  <span className="font-bold text-amber-400">₹{amount.toLocaleString('en-IN')}</span>
+                </span>
+              </Row>
+              {discount > 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-emerald-400/90 py-1.5">
+                  <Tag className="w-3 h-3 shrink-0" />
+                  <span className="truncate">Coupon {purchasedKey.couponCode || ''} — you saved ₹{discount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              <Row label="Order ID">
+                <button
+                  onClick={() => copy(purchasedKey.orderId || '', setCopiedOrder)}
+                  className="font-mono text-[10px] sm:text-[11px] text-gray-300 hover:text-amber-400 transition-colors flex items-center gap-1.5 max-w-[60%]"
+                >
+                  <span className="truncate">{formatOrderId(purchasedKey.orderId)}</span>
+                  {copiedOrder ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+                </button>
+              </Row>
+              {purchasedKey.transactionId && (
+                <Row label="Txn / UTR">
+                  <button
+                    onClick={() => copy(purchasedKey.transactionId, setCopiedTxn)}
+                    className="font-mono text-[10px] sm:text-[11px] text-gray-300 hover:text-amber-400 transition-colors flex items-center gap-1.5 max-w-[60%]"
+                  >
+                    <span className="truncate">{purchasedKey.transactionId}</span>
+                    {copiedTxn ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+                  </button>
+                </Row>
+              )}
+              {date && (
+                <Row label="Date">
+                  <span className="text-gray-300 flex items-center gap-1.5 flex-wrap justify-end">
+                    <CalendarDays className="w-3 h-3 text-gray-600 shrink-0" />
+                    {dateStr} · {timeStr}
+                  </span>
+                </Row>
+              )}
+            </div>
+          </div>
+
+          {/* ─── Actions ─── */}
+          <div className="px-3 sm:px-6 py-4 sm:py-6">
+            <button onClick={onReset} className="btn btn-gold !w-full !py-2.5 sm:!py-3.5 text-xs sm:text-sm">
+              <ShoppingBag className="w-4 h-4" /> Buy Another
+            </button>
+            <Link to="/" className="block text-center text-[10px] sm:text-[11px] text-gray-600 hover:text-amber-400 transition-colors mt-3 sm:mt-3.5">
+              ← Back to Store
+            </Link>
+          </div>
+        </div>
+
+        <p className="text-center text-[9px] sm:text-[10px] text-gray-700 mt-4 sm:mt-5 flex items-center justify-center gap-1.5 px-2">
+          <ShieldCheck className="w-3 h-3 text-emerald-600/80 shrink-0" />
+          Secured purchase · Verified by Keys Store
+        </p>
       </div>
     </div>
   );
