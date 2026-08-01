@@ -202,3 +202,7 @@
 }
 .toast-slide-in { animation: slide-in-left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .toast-leave { animation: toast-leave 0.35s ease-in both; }
+
+/* Hide scrollbar on horizontal chip rows */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

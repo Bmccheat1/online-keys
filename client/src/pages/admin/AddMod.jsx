@@ -13,13 +13,21 @@ export default function AddMod() {
   const isEdit = Boolean(id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', image: '', durations: [{ ...emptyDuration }] });
+  const [form, setForm] = useState({ title: '', description: '', image: '', platform: 'both', category: '', isBestSeller: false, durations: [{ ...emptyDuration }] });
 
   useEffect(() => {
     if (isEdit) {
       productAPI.getById(id).then((res) => {
         const p = res.data;
-        setForm({ title: p.title, description: p.description || '', image: p.image || '', durations: p.durations.length > 0 ? p.durations : [{ ...emptyDuration }] });
+        setForm({
+          title: p.title,
+          description: p.description || '',
+          image: p.image || '',
+          platform: p.platform || 'both',
+          category: p.category || '',
+          isBestSeller: p.isBestSeller || false,
+          durations: p.durations.length > 0 ? p.durations : [{ ...emptyDuration }],
+        });
       }).finally(() => setLoading(false));
     } else { setLoading(false); }
   }, [id, isEdit]);
@@ -118,6 +126,80 @@ export default function AddMod() {
                   />
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Store Listing */}
+        <div className="panel !p-4 md:!p-6 space-y-4">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-[#0a0a14]" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white text-base font-display">Store Listing</h3>
+              <p className="text-xs text-gray-600">Platform tag, category & promo badges shown on the store cards</p>
+            </div>
+          </div>
+
+          {/* Platform */}
+          <div>
+            <label className="field">Platform Tag *</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { v: 'android', l: 'Android', dot: 'bg-emerald-400' },
+                { v: 'ios', l: 'iOS', dot: 'bg-sky-400' },
+                { v: 'both', l: 'Both (Android + iOS)', dot: 'bg-amber-400' },
+              ].map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setForm({ ...form, platform: opt.v })}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium border transition-all
+                    ${form.platform === opt.v
+                      ? 'border-amber-500/70 bg-amber-500/10 text-amber-300'
+                      : 'border-[#1e1e2e] bg-[#0a0a14]/60 text-gray-500 hover:border-amber-500/40 hover:text-gray-300'}`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="field">Game Category</label>
+            <input
+              type="text"
+              list="category-options"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="input-field"
+              placeholder="e.g. Action, Racing, Sports..."
+            />
+            <datalist id="category-options">
+              {['Action', 'Adventure', 'Racing', 'Sports', 'Simulation', 'Strategy', 'Puzzle', 'Casual', 'Tools', 'Other'].map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+            <p className="text-xs text-gray-600 mt-1">Customers can filter the store by this category.</p>
+          </div>
+
+          {/* Best Seller */}
+          <div className="flex items-center gap-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isBestSeller || false}
+                onChange={(e) => setForm({ ...form, isBestSeller: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-[#1e1e2e] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+            </label>
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-400 text-sm">★</span>
+              <span className="text-xs text-gray-400">Mark as <b className="text-amber-400">Best Seller</b> (shows gold badge on card)</span>
             </div>
           </div>
         </div>

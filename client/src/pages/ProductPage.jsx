@@ -226,6 +226,14 @@ export default function ProductPage() {
       couponCode: appliedCoupon?.code || '',
     });
     setPurchasedKey(res.data);
+    // Notify the live purchase popups (real sale)
+    window.dispatchEvent(new CustomEvent('real-purchase', {
+      detail: {
+        title: product.title,
+        durLabel: `${selectedDuration.value} ${selectedDuration.unit}`,
+        amount: res.data.amountPaid,
+      },
+    }));
     toast.success('Key delivered!');
   };
 
@@ -310,9 +318,20 @@ export default function ProductPage() {
                     <h1 className="text-xl sm:text-2xl font-bold text-white font-display">{product.title}</h1>
                     <p className="text-xs text-gray-500 mt-1.5 leading-relaxed max-w-xl">{product.description}</p>
                   </div>
-                  <span className={`chip !text-[10px] ${inStock ? 'chip-green' : 'chip-red'}`}>
-                    {inStock ? `${product.totalAvailableKeys ?? '—'} keys in stock` : 'Sold out'}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {product.platform && product.platform !== 'both' && (
+                      <span className={`chip !text-[9px] !py-0.5 ${product.platform === 'android' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-sky-500/15 border-sky-500/40 text-sky-300'}`}>
+                        {product.platform === 'android' ? 'Android' : 'iOS'}
+                      </span>
+                    )}
+                    {product.category && <span className="chip chip-gray !text-[9px] !py-0.5">{product.category}</span>}
+                    {product.isBestSeller && (
+                      <span className="chip bg-gradient-to-r from-amber-500 to-yellow-500 !text-[9px] !py-0.5 text-[#0a0a14] font-bold">★ Best Seller</span>
+                    )}
+                    <span className={`chip !text-[9px] !py-0.5 ${inStock ? 'chip-green' : 'chip-red'}`}>
+                      {inStock ? `${product.totalAvailableKeys ?? '—'} keys in stock` : 'Sold out'}
+                    </span>
+                  </div>
                 </div>
               </div>
 

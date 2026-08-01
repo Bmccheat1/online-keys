@@ -48,6 +48,13 @@ export default function ManageMods() {
                 <h3 className="font-semibold text-white truncate font-display">{mod.title}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   <span className="chip chip-amber !text-[9px] mr-1.5">{mod.durations?.length || 0} duration{(mod.durations?.length || 0) !== 1 ? 's' : ''}</span>
+                  {mod.platform && mod.platform !== 'both' && (
+                    <span className={`chip !text-[9px] mr-1.5 ${mod.platform === 'android' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-sky-500/15 border-sky-500/40 text-sky-300'}`}>
+                      {mod.platform === 'android' ? 'Android' : 'iOS'}
+                    </span>
+                  )}
+                  {mod.category && <span className="chip chip-gray !text-[9px] mr-1.5">{mod.category}</span>}
+                  {mod.isBestSeller && <span className="chip bg-gradient-to-r from-amber-500 to-yellow-500 !text-[9px] mr-1.5 text-[#0a0a14] font-bold">★ Best Seller</span>}
                   {mod.durations?.length > 0 && (
                     <>Starting <span className="text-amber-400 font-semibold">₹{Math.min(...mod.durations.map(d => d.price)).toLocaleString()}</span></>
                   )}

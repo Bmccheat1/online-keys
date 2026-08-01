@@ -52,6 +52,21 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  platform: {
+    type: String,
+    enum: ['android', 'ios', 'both'],
+    default: 'both',
+  },
+  category: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: [50, 'Category cannot exceed 50 characters'],
+  },
+  isBestSeller: {
+    type: Boolean,
+    default: false,
+  },
   durations: {
     type: [durationSchema],
     validate: {
