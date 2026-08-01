@@ -170,6 +170,7 @@ export default function ProductPage() {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [mobileCouponOpen, setMobileCouponOpen] = useState(false);
 
   const grad = cardGradients[((product?.title || '').length) % cardGradients.length];
   const isFlashActive = selectedDuration ? isDurFlashActive(selectedDuration) : false;
@@ -276,7 +277,7 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen flex flex-col relative">
       <Bg />
-      <main className="flex-1 px-3 sm:px-5 pt-14 sm:pt-16 md:pt-20 pb-32 lg:pb-8">
+      <main className="flex-1 px-3 sm:px-5 pt-2 sm:pt-3 pb-32 lg:pb-8">
         <div className="w-full max-w-6xl mx-auto animate-fade-up">
 
           {/* Back */}
@@ -405,8 +406,8 @@ export default function ProductPage() {
               </div>
             </div>
 
-            {/* ─── Right: order summary (sticky) ─── */}
-            <div className="lg:sticky lg:top-20">
+            {/* ─── Right: order summary (desktop sticky; mobile uses the bottom bar) ─── */}
+            <div className="hidden lg:block lg:sticky lg:top-20">
               <div className="card-glass rounded-2xl p-4 sm:p-5 shadow-gold">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-[#1e1e2e]/50 mb-3">
                   {product.image ? (
@@ -530,42 +531,88 @@ export default function ProductPage() {
 
       {/* ─── Mobile sticky pay bar — disabled until a duration is selected ─── */}
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[#1e1e2e]/60 bg-[#0a0a14]/95 backdrop-blur-xl px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] animate-fade-up">
-        <div className="flex items-center gap-3 max-w-6xl mx-auto">
-          <div className="min-w-0 flex-1">
-            {selectedDuration ? (
-              <>
-                <p className="text-[9px] text-gray-500 uppercase tracking-wider truncate">{product.title} · {selectedDuration.value} {selectedDuration.unit}</p>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {isFlashActive && <span className="chip chip-amber !text-[8px] !py-0.5"><Flame className="w-2 h-2" /> Flash</span>}
-                  {appliedCoupon && <span className="chip chip-green !text-[8px] !py-0.5"><Percent className="w-2 h-2" /> {appliedCoupon.code}</span>}
-                  <p className="text-lg font-bold text-gradient leading-none">₹{(discountedPrice || 0).toLocaleString()}</p>
-                  {isFlashActive && effectivePrice != null && (
-                    <span className="text-[10px] text-gray-600 line-through">₹{effectivePrice.toLocaleString()}</span>
-                  )}
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-gray-500">Select a duration to continue</p>
+        <div className="max-w-6xl mx-auto">
+          {/* Coupon expand row (mobile) */}
+          {!appliedCoupon && mobileCouponOpen && (
+            <div className="flex gap-2 pb-2.5 animate-fade-in">
+              <div className="relative flex-1 min-w-0">
+                <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" />
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="COUPON CODE"
+                  className="input-field !pl-9 !py-2 !text-xs w-full"
+                />
+              </div>
+              <button
+                onClick={handleApplyCoupon}
+                disabled={couponLoading || !couponCode.trim()}
+                className="btn btn-ghost !px-3.5 !py-2 !text-xs shrink-0"
+              >
+                {couponLoading ? '…' : 'Apply'}
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+              {selectedDuration ? (
+                <>
+                  <p className="text-[9px] text-gray-500 uppercase tracking-wider truncate">{product.title} · {selectedDuration.value} {selectedDuration.unit}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {isFlashActive && <span className="chip chip-amber !text-[8px] !py-0.5"><Flame className="w-2 h-2" /> Flash</span>}
+                    {appliedCoupon && (
+                      <button
+                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                        className="chip chip-green !text-[8px] !py-0.5 hover:opacity-80 transition-opacity"
+                        title="Remove coupon"
+                      >
+                        <Percent className="w-2 h-2" /> {appliedCoupon.code} ×
+                      </button>
+                    )}
+                    <p className="text-lg font-bold text-gradient leading-none">₹{(discountedPrice || 0).toLocaleString()}</p>
+                    {isFlashActive && effectivePrice != null && (
+                      <span className="text-[10px] text-gray-600 line-through">₹{effectivePrice.toLocaleString()}</span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-gray-500">Select a duration to continue</p>
+              )}
+            </div>
+
+            {/* Coupon toggle (mobile) — hidden when a coupon is applied */}
+            {!appliedCoupon && (
+              <button
+                onClick={() => setMobileCouponOpen(o => !o)}
+                className={`p-2.5 rounded-xl border transition-all flex-shrink-0 ${mobileCouponOpen ? 'border-amber-500/60 bg-amber-500/10 text-amber-400' : 'border-[#1e1e2e]/80 bg-[#0a0a14]/60 text-gray-500 hover:text-amber-400'}`}
+                title="Apply coupon"
+                aria-label="Apply coupon"
+              >
+                <Percent className="w-4 h-4" />
+              </button>
             )}
+
+            <CheckoutTrigger
+              disabled={!selectedDuration || !inStock}
+              initiate={handleInitiate}
+              complete={handleComplete}
+              release={handleRelease}
+              label={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
+              noDurationLabel="Select Duration"
+              soldOutLabel="Sold Out"
+            >
+              <span className="inline-flex items-center justify-center gap-2 btn-gold !py-3 !px-5 sm:!px-6 !text-sm shrink-0">
+                {!selectedDuration || !inStock
+                  ? (inStock ? <Clock className="w-4 h-4" /> : <Package className="w-4 h-4" />)
+                  : <Sparkles className="w-4 h-4" />}
+                {!selectedDuration || !inStock
+                  ? (inStock ? 'Select Duration' : 'Sold Out')
+                  : `Pay ₹${(discountedPrice || 0).toLocaleString()}`}
+              </span>
+            </CheckoutTrigger>
           </div>
-          <CheckoutTrigger
-            disabled={!selectedDuration || !inStock}
-            initiate={handleInitiate}
-            complete={handleComplete}
-            release={handleRelease}
-            label={`Pay ₹${(discountedPrice || 0).toLocaleString()}`}
-            noDurationLabel="Select Duration"
-            soldOutLabel="Sold Out"
-          >
-            <span className="inline-flex items-center justify-center gap-2 btn-gold !py-3 !px-6 !text-sm shrink-0">
-              {!selectedDuration || !inStock
-                ? (inStock ? <Clock className="w-4 h-4" /> : <Package className="w-4 h-4" />)
-                : <Sparkles className="w-4 h-4" />}
-              {!selectedDuration || !inStock
-                ? (inStock ? 'Select Duration' : 'Sold Out')
-                : `Pay ₹${(discountedPrice || 0).toLocaleString()}`}
-            </span>
-          </CheckoutTrigger>
         </div>
       </div>
 

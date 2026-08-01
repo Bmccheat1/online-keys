@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { productAPI } from '../api';
 import SiteFooter from '../components/common/SiteFooter';
-import { Search, Package, Flame, X, ArrowRight, Smartphone } from 'lucide-react';
+import { Package, Flame, ArrowRight, Smartphone, Clock } from 'lucide-react';
 
 /* ─── Deterministic gradient per mod card ─── */
 const cardGradients = [
@@ -72,8 +72,10 @@ function Countdown({ endAt, className = '' }) {
 export default function Home() {
   const [mods, setMods] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  // Search now lives in the Header — it drives this page via the ?q= URL param
+  const [searchParams] = useSearchParams();
+  const q = searchParams.get('q') || '';
 
   useEffect(() => {
     productAPI.getAll({ active: 'true', limit: '50' }).then((res) => {
@@ -82,6 +84,10 @@ export default function Home() {
   }, []);
 
   const flashMods = mods.filter((m) => m.durations?.some(isDurFlashActive));
+
+  // Earliest active flash end time (drives the "Ends in" timer above the marquee)
+  const flashEnds = flashMods.flatMap((m) => m.durations.filter(isDurFlashActive).map((d) => d.flashSale.endAt));
+  const earliestEnd = flashEnds.length ? new Date(Math.min(...flashEnds.map((t) => new Date(t).getTime()))).toISOString() : null;
 
   const categories = [...new Set(mods.map((m) => m.category).filter(Boolean))];
   const chips = [
@@ -99,8 +105,8 @@ export default function Home() {
   };
 
   const filteredMods = mods.filter((m) => {
-    const q = search.trim().toLowerCase();
-    if (q && !(m.title || '').toLowerCase().includes(q) && !(m.description || '').toLowerCase().includes(q)) return false;
+    const query = q.trim().toLowerCase();
+    if (query && !(m.title || '').toLowerCase().includes(query) && !(m.description || '').toLowerCase().includes(query)) return false;
     switch (filter) {
       case 'all': return true;
       case 'android': return matchesPlatform(m, 'android');
@@ -117,69 +123,66 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col relative">
       <Bg />
-      <main className="flex-1 px-3 sm:px-5 pt-14 sm:pt-16 md:pt-20">
+      <main className="flex-1 px-3 sm:px-5 pt-2 sm:pt-3">
         <div className="w-full max-w-6xl mx-auto animate-fade-up pb-8">
 
-          {/* ─── Minimal hero: small heading + search only ─── */}
-          <div className="mb-5 sm:mb-6">
-            <h1 className="text-base sm:text-xl font-bold text-white font-display text-center mb-3">
-              Purchase <span className="text-gradient">License Keys</span>
-            </h1>
-            <div className="relative max-w-md mx-auto">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search mods..."
-                className="w-full bg-[#0d0d1a]/80 backdrop-blur-sm border border-[#1e1e2e]/60 rounded-xl pl-10 pr-9 py-2.5 sm:py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ─── Flash Deals — auto-scrolling marquee (only when a flash deal is ON) ─── */}
+          {/* ─── Flash Deals — logo + timing on top, auto-scrolling marquee below ─── */}
           {flashMods.length > 0 && (
-            <div className="relative mb-5 overflow-hidden rounded-xl border border-amber-500/20 bg-[#0c0c18]/90 py-2 animate-fade-in">
-              <div className="flex w-max animate-[flash-marquee_30s_linear_infinite] hover:[animation-play-state:paused]">
-                {[0, 1].map((half) => (
-                  <div key={half} className="flex gap-2 pr-2" aria-hidden={half === 1}>
-                    {flashMods.map((m) => {
-                      const d = m.durations.find(isDurFlashActive);
-                      const flashPrice = d?.flashSale?.flashPrice ?? d?.price;
-                      const origPrice = d?.price;
-                      return (
-                        <Link
-                          key={`${half}-${m._id}`}
-                          to={`/product/${m._id}`}
-                          className="group flex items-center gap-2 shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors pl-1.5 pr-3 py-1.5"
-                        >
-                          <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                            <Flame className="w-3 h-3 text-amber-400" />
-                          </span>
-                          <span className="text-[10px] sm:text-[11px] text-white font-semibold truncate max-w-[90px] sm:max-w-[160px]">{m.title}</span>
-                          <span className="text-[9px] text-gray-500 shrink-0">{d?.label}</span>
-                          {origPrice != null && flashPrice < origPrice && (
-                            <span className="text-[9px] text-gray-600 line-through shrink-0">₹{origPrice.toLocaleString()}</span>
-                          )}
-                          <span className="text-[11px] font-bold text-amber-400 shrink-0">₹{(flashPrice || 0).toLocaleString()}</span>
-                          <span className="hidden sm:inline text-[9px] font-mono text-amber-300/80 shrink-0">
-                            <Countdown endAt={d?.flashSale?.endAt} />
-                          </span>
-                          <ArrowRight className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 transition-colors shrink-0" />
-                        </Link>
-                      );
-                    })}
+            <div className="mb-5 animate-fade-in">
+              {/* Flash header: logo + countdown */}
+              <div className="flex items-center justify-between gap-3 px-1 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-gold">
+                    <Flame className="w-3.5 h-3.5 text-[#0a0a14]" />
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold font-display bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400">
+                    Flash Sale
+                  </span>
+                </div>
+                {earliestEnd && (
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-400 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden sm:inline">Ends in</span>
+                    <Countdown endAt={earliestEnd} className="text-amber-400 font-bold" />
                   </div>
-                ))}
+                )}
               </div>
-              {/* Fade edges */}
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#080812] to-transparent z-10" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#080812] to-transparent z-10" />
+
+              {/* Marquee */}
+              <div className="relative overflow-hidden rounded-xl border border-amber-500/20 bg-[#0c0c18]/90 py-2">
+                <div className="flex w-max animate-[flash-marquee_30s_linear_infinite] hover:[animation-play-state:paused]">
+                  {[0, 1].map((half) => (
+                    <div key={half} className="flex gap-2 pr-2" aria-hidden={half === 1}>
+                      {flashMods.map((m) => {
+                        const d = m.durations.find(isDurFlashActive);
+                        const flashPrice = d?.flashSale?.flashPrice ?? d?.price;
+                        const origPrice = d?.price;
+                        return (
+                          <Link
+                            key={`${half}-${m._id}`}
+                            to={`/product/${m._id}`}
+                            className="group flex items-center gap-2 shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors pl-1.5 pr-3 py-1.5"
+                          >
+                            <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                              <Flame className="w-3 h-3 text-amber-400" />
+                            </span>
+                            <span className="text-[10px] sm:text-[11px] text-white font-semibold truncate max-w-[90px] sm:max-w-[160px]">{m.title}</span>
+                            <span className="text-[9px] text-gray-500 shrink-0">{d?.label}</span>
+                            {origPrice != null && flashPrice < origPrice && (
+                              <span className="text-[9px] text-gray-600 line-through shrink-0">₹{origPrice.toLocaleString()}</span>
+                            )}
+                            <span className="text-[11px] font-bold text-amber-400 shrink-0">₹{(flashPrice || 0).toLocaleString()}</span>
+                            <ArrowRight className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 transition-colors shrink-0" />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+                {/* Fade edges */}
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#080812] to-transparent z-10" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#080812] to-transparent z-10" />
+              </div>
             </div>
           )}
 

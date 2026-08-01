@@ -91,6 +91,8 @@ export default function AddMod() {
     if (form.durations.some((d) => d.price <= 0)) { toast.error('All durations must have a price > 0'); return; }
     const badFlash = form.durations.find((d) => d.flashSale?.isActive && (d.flashSale?.flashPrice == null || d.flashSale?.flashPrice <= 0 || !d.flashSale?.endAt));
     if (badFlash) { toast.error('Flash sale needs BOTH a flash price and an end time — set them on the duration marked FLASH'); return; }
+    const expiredFlash = form.durations.find((d) => d.flashSale?.isActive && d.flashSale?.endAt && new Date(d.flashSale.endAt) <= new Date());
+    if (expiredFlash) { toast.error('Flash sale end time is in the PAST — pick a future end time or the deal stays hidden'); return; }
     const submitData = {
       ...form,
       durations: form.durations.map(d => ({ ...d, label: generateLabel(d) })),
@@ -356,6 +358,9 @@ export default function AddMod() {
                         }}
                         className="bg-[#0a0a14] border border-[#1e1e2e] rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                       />
+                      {dur.flashSale?.endAt && new Date(dur.flashSale.endAt) <= new Date() && (
+                        <span className="text-[9px] text-red-400 font-medium whitespace-nowrap">Expired — hidden from store</span>
+                      )}
                     </div>
                   )}
                 </div>
